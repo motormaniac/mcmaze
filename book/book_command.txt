@@ -2,7 +2,7 @@ Quick Teleports:
 Commands|/tp @p -72 3 23
 MultiBlock Modules|/tp 130 17 -55
 Maze Lobby|/tp @p 19 7 -9
-Village|/tp @p 785 72 -16
+Village|/tp @s 1613 75 -61
 Fountain|/tp @s 686 -31 -540
 Tutorial|/tp 364 63 -631
 -- Maze|/tp @p -255 66 126

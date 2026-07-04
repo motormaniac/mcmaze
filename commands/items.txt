@@ -436,9 +436,12 @@ execute as @a[tag=addCarry] at @s as @n[type=armor_stand,name=flag,distance=..2]
 -- TODO: make banner unremovable
 item replace entity @a[tag=addCarry,team=seeker] armor.head with red_banner
 item replace entity @a[tag=addCarry,team=hider] armor.head with blue_banner
-execute as @a[tag=addCarry] run tellraw @a [{color:white,selector:"@s"}, {text:" captured a flag}]
+execute as @a[tag=addCarry] run tellraw @a [{color:white,selector:"@s"}, {text:" captured a flag"}]
 tag @a[tag=addCarry] add carry
 tag @a[tag=addCarry] remove addCarry
+
+execute as @e[type=mannequin,tag=freeze,nbt={last_hurt_by_player_memory_time:100}] at @s on attacker if entity @s[team=hider] run tag @n[type=mannequin,distance=..0] add removeFreeze
+execute as @a[tag=carry,nbt={last_hurt_by_player_memory_time:100}] on attacker 
 
 ## Remove carry
 item replace entity @a[tag=removeCarry] armor.head with air
