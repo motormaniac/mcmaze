@@ -1,0 +1,1019 @@
+-- All scoreboards
+dummy:
+global scoreboard name: .global
+.temp = temporarily store maze settings
+.var & .var2: used for math
+- closedCount = in the maze pattern, used to count how many walls are closed
+- rng = random number variable used for most things that are random
+- id = unique identifers used for player items (linking items to players)
+- time = timers within the game
+- x = used for x coordinate within the maze generation. On .global, it's the total maze width
+- z = used for x coordinate within the maze generation. On .global, it's the total maze length
+- level (y axis) = what level of the maze. 1st floor is level = 1. On .global, it's the total maze height
+- multiblockPercentage = .global setting: what percentage of the map to fill with multiblocks
+- multiblockFill = used by "multiblock" to calculate what percentage of the map to fill with multiblocks
+- attempts = used by "multiblock" to count how many times it has tried to place a multiblock. After a certain #of attempts, it chooses a new random position.
+- mazeProgress = used for maze progress bar
+- mazeState = tracks what state the maze is in (0=empty,1=building,2=built,3=clearing)
+- loot = used in the random item/loot system. Every "loot" armor stand is assigned a random # loot, and when the timer reaches that number, it spawns a loot.
+- portalID = when linking portals, this is the identifier of a portal
+- targetID = the target this portal teleports to
+- portalTime = portal cooldown
+- blindCount = in the blind item, it counts how many players were affected
+- tutorial = each step in the tutorial is represented by a number
+- gameMode = which game to play ex: freezetag or cat & mouse
+  - 1 = freezetag
+  - 2 = mouse
+- cheeseRng = rng scoreboard for spawning cheese (spawning loot items already takes rng)
+- tickRate = 5 tick rate modes: 20 (1x), 100 (5x), 200 (10x), 400 (20x), 1000 (50x)
+  - set default value 20
+Triggers:
+- book = debug: gives the target player a command book
+- end = when all players trigger end, the game forces a draw and exits early.
+/scoreboard objectives add rightClick minecraft.used:minecraft.carrot_on_a_stick
+/scoreboard objectives add placeMine minecraft.used:minecraft.panda_spawn_egg
+bossbars: time, maze_progress
+
+-- Teams:
+hider (color aqua)
+- Disable seeFriendlyInvisibles
+seeker (color red)
+- Disable seeFriendlyInvisibles
+spectator (color gray)
+freeze (color dark blue) - set collision rule to never
+cheese (color gold)
+
+======================================
+
+# General Notes
+Center and corner are static reference points that may exist in the world (they are not killed between loops)
+Path and maze are killed between loops, so they should be resummoned
+All repeating command block (all loops) should be self terminating: all loops must terminate themselves based on an external event, such as detecting if maze or path have been killed.
+
+# General Description of the whole process
+1. Summon an armor stand named center
+2. Based on the .global x and y scores, create an armor stand named corner and place it in the corner cell of the maze.
+3. Create two borders for each of the two levels.
+  - When generating borders, path first goes straight towards north
+  - Borders are a square ring of netherite blocks that hug the outside of the maze bounds. These blocks DO NOT fall within the designated cell areas, but rather hug the outer perimeter.
+  - The netherite blocks mark a closed wall
+  - The spiral algorithm turns if there is an emerald block in the cell in front of it.
+    Thus, in the outer ring of cells, at each corner cell, an emerald block is placed in the cell IN FRONT.
+    Since it is placed in front, this emerald block IS NOT within the maze cell bounds. It is one cell outside.
+4. An armor stand named maze will place multiblock rooms in random locations of the map
+  a. First summon maze at corner
+  b. Choose random x and z cell coordinates within the range of .global x and z scores.
+  c. The armor stand moves to that random position, then attempts to place a multiblock. Attempts only succeed if the multiblock fits within the space provided and if it matches adjacent walls.
+  d. After 5 failed attempts, a new random position is picked
+  e. After a certain percentage of the map is filled, the multiblock stops.
+5. Place multiblock for second level
+6. For first level, summon an armor armor stand named path at corner, then run the path algorithm.
+  a. The path moves in a clockwise inward spiral, where path first moves straight towards north.
+  b. Whenever the cell in front of path is occupied (denoted by the emerald block at ~ ~-100 ~), path turns to its right, then continues moving forward.
+  c. If after turning path finds another occupied cell in front, that means it has completed the spiral.
+  d. Path moves in increments of 7 blocks (the cell size)
+  e. At each step, path marks its cell as occupied (with an emerald block)
+7. At each step of the path pattern, a separate armor stand named maze at path's position generates the room.
+  a. If there is any obstruction at all within the cell space, do not generate a room. (This accounts for preplaced structures)
+  b. First, check and match the walls of adjacent rooms.
+  c. Randomly pick the rest of the missing walls based on these rules:
+    - If two walls are already closed, pick between an open or a hidden to prevent dead ends.
+    - If one or less walls are closed (at least three open), then pick between open, hidden, or closed
+    - Activate the redstone encoder to find the corresponding maze room, and spawn it at maze.
+
+=======================
+    
+-- Init things
+/bossbar set minecraft:time color blue
+/bossbar set minecraft:maze_progress color yellow
+
+=========================================
+
+# Attempt Maze Start
+execute if entity @e[type=armor_stand,name=origin,scores={mazeState=1}] at @e[type=armor_stand,name=console] run tellraw @a[distance=..10] {color:yellow,text:"Maze Generation is already in progress."}
+execute if entity @e[type=armor_stand,name=origin,scores={mazeState=2}] at @e[type=armor_stand,name=console] run tellraw @a[distance=..10] {color:red,text:"Clear the maze before generating a new one."}
+execute if entity @e[type=armor_stand,name=origin,scores={mazeState=3}] at @e[type=armor_stand,name=console] run tellraw @a[distance=..10] {color:red,text:"Currently clearing maze. Wait until clear finishes."}
+-- check conditions
+execute if entity @e[type=armor_stand,name=origin,scores={mazeState=0}]
+-- conditional
+tellraw @a {color:green,text:"Starting Maze Generation"}
+-- conditional
+scoreboard players operation .global x = .temp x
+-- conditional
+scoreboard players operation .global z = .temp z
+-- conditional
+scoreboard players operation .global level = .temp level
+-- conditional
+scoreboard players operation .global multiblockPercentage = .temp multiblockPercentage
+-- conditional
+{start listener for loaded}
+-- conditional
+execute unless entity @e[type=armor_stand,name=origin,tag=loaded] run {start forceload add}
+-- conditional
+-- Set the maze state to generating
+scoreboard players set @e[type=armor_stand,name=origin] mazeState 1
+
+## Listener for loaded
+execute if entity @e[type=armor_stand,name=origin,tag=loaded] run {stop listener}
+-- conditional
+{start Maze Start (next)}
+
+## Set tick rate (These commands require mod)
+-- 1x
+execute if score .global tickRate matches 20 run tick rate 20
+-- 5x
+execute if score .global tickRate matches 100 run tick rate 100
+-- 10x
+execute if score .global tickRate matches 200 run tick rate 200
+-- 20x
+execute if score .global tickRate matches 400 run tick rate 400
+-- 50x
+execute if score .global tickRate matches 1000 run tick rate 1000
+
+# Maze Start
+-- generate progress max
+-- max = full volume (for maze) + full volume * multiblockPercentage (for multiblock)
+-- max = xyz(1+multiblockPercentage)
+-- calculate (1+multiblockPercentage)
+scoreboard players operation .global mazeProgress = .global multiblockPercentage
+scoreboard players add .global mazeProgress 100
+-- *= xyz
+scoreboard players operation .global mazeProgress *= .global x
+scoreboard players operation .global mazeProgress *= .global z
+scoreboard players operation .global mazeProgress *= .global level
+-- divide by 100 bc of percentage
+scoreboard players set .var mazeProgress 100
+scoreboard players operation .global mazeProgress /= .var mazeProgress
+-- set max of bossbar
+execute store result bossbar minecraft:maze_progress max run scoreboard players get .global mazeProgress
+-- reset mazeProgress to 0
+scoreboard players set .global mazeProgress 0
+bossbar set minecraft:maze_progress value 0
+bossbar set minecraft:maze_progress players @a
+bossbar set minecraft:maze_progress visible true
+{start generate corners}
+tellraw @a {color:yellow,text:"Generating Maze..."}
+
+===============================================================
+
+# Init origin
+-- Summon origin from player
+execute at @p align xyz run summon armor_stand ~0.5 50.5 ~0.5 {CustomName:origin,CustomNameVisible:1b,NoGravity:1b,Marker:1b,Tags:["new"]}
+
+-- Goal: get the origin armor stand to be centered within the chunk with at least 7 blocks behind and to the left of it
+-- This is to get the emerald blocks included within the chunk load area
+-- x + dx = 7 mod 16 --> dx = 7-x --> -dx = x - 7 (tp ~-1 ~ ~ dx times)
+-- z + dz = -7 mod 16 --> dz = -7 - z --> -dz = z + 7 (tp ~ ~ ~-1 dz times)
+## Init
+scoreboard players set @e[type=armor_stand,name=origin,tag=new] mazeState 0
+-- Store the x and y position into the .x and .y
+execute as @e[type=armor_stand,name=origin,tag=new] at @s align xyz run tp @s ~ ~ ~
+execute as @e[type=armor_stand,name=origin,tag=new] store result score @s x run data get entity @s Pos[0]
+execute as @e[type=armor_stand,name=origin,tag=new] store result score @s z run data get entity @s Pos[2]
+-- remove 7 from x and add 7 to z (since forward points towards the negative z direction)
+scoreboard players remove @e[type=armor_stand,name=origin,tag=new] x 7
+scoreboard players add @e[type=armor_stand,name=origin,tag=new] z 7
+-- Set the coordinates mod 16
+scoreboard players set .constant x 16
+scoreboard players operation @e[type=armor_stand,name=origin,tag=new] x %= .constant x
+scoreboard players operation @e[type=armor_stand,name=origin,tag=new] z %= .constant x
+execute as @e[type=armor_stand,name=origin,tag=new] at @s run tp @s ~0.5 ~ ~-0.5
+{start next}
+
+## Loop:
+execute as @e[type=armor_stand,name=origin,tag=new,scores={x=1..}] at @s run tp @s ~-1 ~ ~
+execute as @e[type=armor_stand,name=origin,tag=new,scores={z=1..}] at @s run tp @s ~ ~ ~-1
+scoreboard players remove @e[type=armor_stand,name=origin,tag=new,scores={x=1..}] x 1
+scoreboard players remove @e[type=armor_stand,name=origin,tag=new,scores={z=1..}] z 1
+execute as @e[type=armor_stand,name=origin,tag=new,scores={x=..0,z=..0}] run tag @s remove new
+-- conditional
+{stop loop}
+-- conditional
+execute as @n[type=armor_stand,name=origin] at @s run forceload add ~ ~
+
+===============================================
+
+# Forceload
+-- similar to clear, forceloads start at origin's corner, then expand out in the x and z directions.
+-- One x armor stand shoots right, spawning a z armor stand every step that shoots forward.
+-- The chunk that origin resides in is UNAFFECTED by this process, since origin handles its own chunk separately.
+-- The same logic is used for forceload add or forceload remove; it is controlled by either the add or remove tag on all the load armor_stands
+-- It takes one tick for the forceload commands to take affect; ex: add won't load the chunk until next tick, and remove won't remove the chunk until next tick
+
+## Init add
+execute as @n[type=armor_stand,name=origin] at @s run summon armor_stand ~ ~ ~ {CustomName:xload,CustomNameVisible:1b,NoGravity:1b,Tags:[load,new,add]}
+execute as @n[type=armor_stand,name=origin] at @s run summon armor_stand ~ ~ ~ {CustomName:zload,CustomNameVisible:1b,NoGravity:1b,Tags:[load,new,add]}
+{start loop}
+
+## Init remove
+execute as @n[type=armor_stand,name=origin] at @s run summon armor_stand ~ ~ ~ {CustomName:xload,CustomNameVisible:1b,NoGravity:1b,Tags:[load,new,remove]}
+execute as @n[type=armor_stand,name=origin] at @s run summon armor_stand ~ ~ ~ {CustomName:zload,CustomNameVisible:1b,NoGravity:1b,Tags:[load,new,remove]}
+{start load}
+
+-- Loop mechanics:
+(the same behavior applies for x and z)
+Forceload adding:
+forceload the chunk in front before teleporting into it
+x=3  #the total width of chunk cells ex: the total area being loaded is 3x3 chunks
+The armor stand starts in the start cell. It forceload adds the next chunk, then moves into the next chunk.
+Note that the armor stand DOES NOT load the chunk it starts in, and it doesn't teleport off the grid where it can't be loaded.
+x =    3    2  1  0
+Move:     >  >
+    [start][A][A]
+Forceload removing:
+Forceload the current chunk then teleport into the next chunk.
+Remove has the same movement pattern as add, except the moments when it removes is shifted. Remove does not trigger on the first cell, and it is also active while x >= 1 instead of >= 2.
+x =  3  2  1
+Move:      >  >
+    [start][R][R]
+For some reason, you have to wait an additional cycle before killing all the entities. Kill when x = 0
+
+## loop:
+-- set scoreboard bounds and initialize
+scoreboard players operation @e[type=armor_stand,name=xload,tag=new] x = .global x
+scoreboard players operation @e[type=armor_stand,name=zload,tag=new] z = .global z
+-- add 1 cell to generate margins for emerald blocks
+scoreboard players add @e[type=armor_stand,name=xload,tag=new] x 1
+scoreboard players add @e[type=armor_stand,name=zload,tag=new] z 1
+-- multiply by 7
+scoreboard players set .constant x 7
+scoreboard players operation @e[type=armor_stand,name=xload,tag=new] x *= .constant x
+scoreboard players operation @e[type=armor_stand,name=zload,tag=new] z *= .constant x
+-- divide by 16 (floor)
+scoreboard players set .constant x 16
+scoreboard players operation @e[type=armor_stand,name=xload,tag=new] x /= .constant x
+scoreboard players operation @e[type=armor_stand,name=zload,tag=new] z /= .constant x
+-- add 1 to get ceil(x/16)
+scoreboard players add @e[type=armor_stand,name=xload,tag=add] x 1
+scoreboard players add @e[type=armor_stand,name=zload,tag=add] z 1
+----------------------------------------
+-- move armor stands
+-- when adding, forceload in the future position so that it's loaded by next cycle
+-- when removing, forceload the current position, and it won't be removed until next cycle
+execute as @e[type=armor_stand,name=xload,scores={x=2..},tag=add] at @s run forceload add ~16 ~
+execute as @e[type=armor_stand,name=xload,tag=!new,scores={x=1..},tag=remove] at @s run forceload remove ~ ~
+execute as @e[type=armor_stand,name=xload,scores={x=2..}] at @s run tp @s ~16 ~ ~
+scoreboard players remove @e[type=armor_stand,name=xload,scores={x=1..}] x 1
+execute as @e[type=armor_stand,name=zload,scores={z=2..},tag=add] at @s run forceload add ~ ~-16
+execute as @e[type=armor_stand,name=zload,tag=!new,scores={z=1..},tag=remove] at @s run forceload remove ~ ~
+execute as @e[type=armor_stand,name=zload,scores={z=2..}] at @s run tp @s ~ ~ ~-16
+scoreboard players remove @e[type=armor_stand,name=zload,scores={z=1..}] z 1
+-- the new tag stays around until after forceload remove. Removes in the first step of the loop are ignored, which utilizes the new tag
+tag @e[type=armor_stand,tag=load,tag=new] remove new
+------------------------------------
+-- summon zload
+execute as @e[type=armor_stand,name=xload,scores={x=1..}] at @s run summon armor_stand ~ ~ ~ {CustomName:zload,CustomNameVisible:1b,NoGravity:1b,Tags:[load,new]}
+execute as @e[type=armor_stand,name=xload,tag=add] at @s run tag @n[type=armor_stand,name=zload,distance=..1] add add
+execute as @e[type=armor_stand,name=xload,tag=remove] at @s run tag @n[type=armor_stand,name=zload,distance=..1] add remove
+-- cleanup
+-- for some reason, this has to be ..0 for forceload remove. I suspect this is maybe because it takes one tick to forceload remove.
+execute as @e[type=armor_stand,name=xload,scores={x=..0}] at @s run tp @s ~ -130 ~
+-- conditional
+kill @e[type=armor_stand,name=xload,scores={x=..0}]
+execute as @e[type=armor_stand,name=zload,scores={z=..0}] at @s run tp @s ~ -130 ~
+-- conditional
+kill @e[type=armor_stand,name=zload,scores={z=..0}]
+execute unless entity @e[type=armor_stand,tag=load] run {stop loop}
+-- tag origin with either loaded or unloaded
+execute unless entity @e[type=armor_stand,tag=load] run tag @n[type=armor_stand,name=origin] remove loaded
+execute unless entity @e[type=armor_stand,tag=load] as @n[type=armor_stand,name=origin] at @s run forceload query ~16 ~-16
+-- conditional
+tag @n[type=armor_stand,name=origin] add loaded
+
+==============================================
+
+# Initialize References (Generate Corners and Center)
+-- starting from an origin armor stand at the bottom left (where forward is -z and right is +x)
+-- dimensions of maze stored in .global - width:x, length:z, and height:levels (amount of floors)
+
+## Initialize References
+-- actual logic:
+-- initialize center:
+execute as @e[type=armor_stand,name=origin] at @s run summon armor_stand ~ ~ ~ {CustomName:center,CustomNameVisible:1b,NoGravity:1b,Marker:1b}
+scoreboard players operation @e[type=armor_stand,name=center] x = .global x
+scoreboard players operation @e[type=armor_stand,name=center] z = .global z
+-- initialize path:
+kill @e[type=armor_stand,name=path]
+execute as @e[type=armor_stand,name=origin] at @s run summon armor_stand ~ ~ ~ {CustomName:path,CustomNameVisible:1b,NoGravity:1b}
+scoreboard players set @e[type=armor_stand,name=path] level 0
+{start next}
+
+## Center loop rapid tick:
+-- Every loop, on each axis, move 1 step, then reduce score by 2. Similar to floor (.global x / 2)
+-- Since this counts the amount of steps taken, it's 0 based indexing
+-- underestimates middle (ex: if grid is 4 wide, then it selects the second cell as the middle [X _X_ X X] )
+execute as @e[type=armor_stand,name=center,scores={x=3..}] at @s run tp @s ~7 ~ ~
+scoreboard players remove @e[type=armor_stand,name=center,scores={x=0..}] x 2
+execute as @e[type=armor_stand,name=center,scores={z=3..}] at @s run tp @s ~ ~ ~-7
+scoreboard players remove @e[type=armor_stand,name=center,scores={z=0..}] z 2
+-- Finished:
+execute if entity @e[type=armor_stand,name=center,scores={x=..2,z=..2}] run {stop loop}
+-- conditional
+{start next}
+
+(theoretically, corner loop and center loop can be run simultaneously, but it's difficult to detect when both are finished. It's easier to run them sequentially since they're so fast.)
+
+## Corner loop rapid tick:
+-- note that the level scoreboard for path is 0 to n-1, but the corner armor stands range from 1 to n
+execute as @e[type=armor_stand,name=path] at @s run summon armor_stand ~ ~ ~ {CustomName:corner,NoGravity:1b,CustomNameVisible:1b,Marker:1b}
+-- set corner's level scoreboard to path + 1
+execute as @e[type=armor_stand,name=path] at @s run scoreboard players operation @n[type=armor_stand,name=corner,distance=..0.1] level = @s level
+execute as @e[type=armor_stand,name=path] at @s run scoreboard players add @n[type=armor_stand,name=corner,distance=..0.1] level 1
+scoreboard players add @e[type=armor_stand,name=path] level 1
+execute as @e[type=armor_stand,name=path] at @s run tp @s ~ ~7 ~
+execute as @e[type=armor_stand,name=path] if score @s[type=armor_stand,name=path] level = .global level run kill @s
+-- conditional
+{start build border walls}
+execute unless entity @e[type=armor_stand,name=path] run {stop loop}
+
+===============================================================
+
+# Build border walls
+-- init
+-- multiple paths created, one at each "corner"
+kill @e[type=armor_stand,name=path]
+execute as @e[type=armor_stand,name=corner] at @s run summon armor_stand ~ ~ ~ {CustomName:path,CustomNameVisible:1b,NoGravity:1b}
+execute as @e[type=armor_stand,name=path] at @s run rotate @s 180 0
+scoreboard players set @e[name=path,type=armor_stand] x 0
+-- This emerald block is used to tell path when it has finished the border
+execute as @e[type=armor_stand,name=path] at @s positioned ^7 ^ ^ run setblock ~ ~-100 ~ emerald_block
+{start next}
+
+-- x on path is used as a regular dummy variable, not necessarily aligned with x axis
+-- depending on path's rotation, path x is reset to either .global x or .global z
+-- loop:
+-- reset scores
+scoreboard players operation @e[type=armor_stand,name=path,y_rotation=90,scores={x=0}] x = .global x
+scoreboard players operation @e[type=armor_stand,name=path,y_rotation=-90,scores={x=0}] x = .global x
+scoreboard players operation @e[type=armor_stand,name=path,y_rotation=0,scores={x=0}] x = .global z
+scoreboard players operation @e[type=armor_stand,name=path,y_rotation=180,scores={x=0}] x = .global z
+-- set walls
+execute as @e[type=armor_stand,name=path,scores={x=1..}] at @s run fill ^4 ^ ^3 ^4 ^ ^-3 netherite_block
+execute as @e[type=armor_stand,name=path,scores={x=1..}] at @s run fill ^4 ^1 ^3 ^4 ^6 ^-3 deepslate_tiles
+execute as @e[type=armor_stand,name=path,scores={x=2..}] at @s run tp @s ^ ^ ^7
+scoreboard players remove @e[type=armor_stand,name=path,scores={x=1..}] x 1
+-- detect when path makes full loop
+execute as @e[type=armor_stand,name=path,scores={x=0}] at @s positioned ^ ^ ^7 if block ~ ~-100 ~ emerald_block run kill @s
+-- conditional
+{Start First Floor}
+execute unless entity @e[type=armor_stand,name=path] run {end loop}
+execute as @e[type=armor_stand,name=path,scores={x=0}] at @s positioned ^ ^ ^7 run setblock ~ ~-100 ~ emerald_block
+execute as @e[type=armor_stand,name=path,scores={x=0}] at @s run rotate @s ~90 ~
+
+=========================================================
+
+# Level builder controls
+## first level multiblock
+execute as @e[type=armor_stand,name=origin] at @s run tag @n[type=armor_stand,name=corner] add multiblock
+-- place maze:spawn
+execute as @e[type=armor_stand,name=center] at @s run place template maze:spawn ~-10 ~ ~-10
+{start multiblock}
+
+## second level and above
+-- when multiblock finishes, maze starts on that level while multiblock moves on to the next level
+-- choose next level: the current level tag adds the the level above it
+execute as @e[type=armor_stand,name=corner,tag=multiblock] at @s positioned ~ ~7 ~ run tag @n[type=armor_stand,name=corner] add multiblock
+-- Since corner is at the bottom, the bottom most corner will always be the closest
+-- bottom most corner: addMaze (ready to be added to maze)
+execute as @e[type=armor_stand,name=origin] at @s run tag @n[type=armor_stand,name=corner,tag=multiblock] add addMaze
+-- bottom most corner: remove multiblock
+execute as @e[type=armor_stand,name=origin] at @s run tag @n[type=armor_stand,name=corner,tag=multiblock] remove multiblock
+execute if entity @e[type=armor_stand,name=corner,tag=multiblock] run {start multiblock}
+execute if entity @e[type=armor_stand,name=corner,tag=addMaze] run {maze level start}
+
+## Maze level start
+-- this is triggered when either maze finishes or multiblock finishes
+-- only trigger if maze is finished:
+execute unless entity @e[type=armor_stand,name=path] at @e[type=armor_stand,name=origin] run tag @n[type=armor_stand,name=corner,tag=addMaze] add maze
+-- conditional: remove addMaze
+execute at @e[type=armor_stand,name=origin] run tag @n[type=armor_stand,name=corner,tag=addMaze] remove addMaze
+-- conditional
+{start maze generation}
+
+## Maze level end
+-- triggered when the maze process ends
+execute at @e[type=armor_stand,name=origin] run tag @n[type=armor_stand,name=corner,tag=maze] add removeMaze
+-- detect when entire maze is finished
+execute as @e[type=armor_stand,name=corner,tag=removeMaze] if score @s level = .global level run {start portal linking}
+-- if maze is not done, trigger maze level start
+execute unless score @n[type=armor_stand,name=corner,tag=removeMaze] level = .global level run {maze level start}
+tag @e[type=armor_stand,name=corner,tag=removeMaze] remove maze
+tag @e[type=armor_stand,name=corner,tag=removeMaze] remove removeMaze
+
+================================
+
+# RANDOM ROOMS (Multiblocks and stairs)
+## Explaining random weights of Multiblocks
+Each level has a fill level percentage for multiblocks. Ex: in a 10x10 with a fill level percent of 40%, the multiblockFill amount is 10*10*40% = 40 multiblock cells allocated
+As multiblocks are placed, mutliblockFill is reduced until it reaches 0. multiblockFill 0 means that level is done.
+Since empty percentage is included in per level multiblockFill, random chance percentages are recalculated to include ONLY the non empty things.
+  Ex: 25% empty, 50% 1 high, 25% 2 high --> 66% 1 high, 34% 2 high
+The empty percentage is subtracted from the fill level using another percentage. Ex: 20% empty --> multiblockFill *= 80%
+Also note that both staircases and 2 high multiblocks are both considered 2 high
+1 level: all multiblocks are 1 level (100% 1 high multi)
+2 levels:
+  - the bottom level is 50% filled with 2 highs and 50% filled with 1 high
+    - emptyFill 100%
+    - 17% stair, 17% 2 high multi, 17% 2 high open sky, 49% 1 high
+  - the top level is already 50% empty (from the 2 highs in level 1), so it only needs to fill 50% 1 high
+    - emptyFill 50%
+    - 100% 1 high
+3 or more levels:
+  - bottom level = 34% 2 high, 66% 1 high
+    - emptyFill 100%
+    - 17% stair, 17% 2 high, 66% 1 high
+  - middle level(s) = 33% (empty, already occupied from below level), 34% 2 high, 33% 1 high
+    - emptyFill 66%
+    - 25% stair, 25% 2 high multi, 50% 1 high multi
+  - second to last level = 33% (empty, already occupied from below level), 34% 2 high, 33% 1 high
+    - emptyFill 66%
+    - 17% stair, 17% 2 high, 17% 2 high open, 49% 1 high
+  - top level = 34% (empty, already occupied), 66% 1 high
+    - emptyFill 66%
+    - 100% 1 high
+
+-- multiblock is killed after a level is finished
+-- debug: show multiblock coordinates
+execute as @e[name=multiblock] run title @a actionbar [{text:"x: "},{score:{name:"@s",objective:"x"}},{text:", z: "},{score:{name:"@s",objective:"z"}}]
+
+## global multiblock fill constant (how much to fill each level)
+-- 40%
+scoreboard players set .global multiblockPercentage 40
+
+## level init
+-- Assume a corner is already tagged multiblock
+execute as @e[type=armor_stand,name=multiblock] at @s run tp @s ~ -130 ~
+kill @e[type=armor_stand,name=multiblock]
+execute as @e[type=armor_stand,name=corner,tag=multiblock] at @s run summon armor_stand ~ ~ ~ {CustomName:multiblock,CustomNameVisible:1b,NoGravity:1b}
+-- if this is the first level, start the clock
+{place redstone dust}
+-- conditional
+{start clock by setting redstone block}
+----------------
+-- x*z*{general fill percent}/100 *{per level percent to account for empty}/100
+-- = x*z*{general fill}*{empty fill}/10000
+scoreboard players set @e[type=armor_stand,name=multiblock] multiblockFill 1
+scoreboard players operation @e[type=armor_stand,name=multiblock] multiblockFill = .global x
+scoreboard players operation @e[type=armor_stand,name=multiblock] multiblockFill *= .global z
+scoreboard players operation @e[type=armor_stand,name=multiblock] multiblockFill *= .global multiblockPercentage
+-- set constant to empty fill percentage
+-- default emptyFill 100%
+scoreboard players set .var multiblockFill 100
+-- 2 levels, second level = 50%
+execute if score .global level matches 2 if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 2 run scoreboard players set .var multiblockFill 50
+-- 3 levels, middle level and top level = 66%
+execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 2.. run scoreboard players set .var multiblockFill 66
+-- apply empty fill percentage
+scoreboard players operation @e[type=armor_stand,name=multiblock] multiblockFill *= .var multiblockFill
+-- use constant scoreboard to divide by 10000 (100 * 100)
+scoreboard players set .var multiblockFill 10000
+scoreboard players operation @e[type=armor_stand,name=multiblock] multiblockFill /= .var multiblockFill
+{start next}
+
+## random position init
+-- assume one of the corners is tagged with "multiblock"
+tp @e[type=armor_stand,name=multiblock] @n[type=armor_stand,name=corner,tag=multiblock]
+tag @e[type=armor_stand,name=multiblock] add move
+-- pick random cell positions within the ranges 0-globalx and 0-globalz
+execute store result score @e[type=armor_stand,name=multiblock] x run random value 0..2147483646
+scoreboard players operation @e[type=armor_stand,name=multiblock] x %= .global x
+execute store result score @e[type=armor_stand,name=multiblock] z run random value 0..2147483646
+scoreboard players operation @e[type=armor_stand,name=multiblock] z %= .global z
+execute if entity @e[type=armor_stand,name=multiblock] run {start next}
+
+## random position loop; rapid tick (as fast as possible)
+execute as @e[type=armor_stand,name=multiblock,tag=move,scores={x=1..}] at @s run tp @s ~7 ~ ~
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=move,scores={x=1..}] x 1
+execute as @e[type=armor_stand,name=multiblock,tag=move,scores={z=1..}] at @s run tp @s ~ ~ ~-7
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=move,scores={z=1..}] z 1
+execute as @e[type=armor_stand,name=multiblock,tag=move,scores={x=0,z=0}] run tag @s remove move
+-- conditional
+scoreboard players set @e[type=armor_stand,name=multiblock] attempts 10
+execute unless entity @e[type=armor_stand,name=multiblock,tag=move] run {stop this clock}
+
+## randomizer commands
+-- staircase
+setblock -80 -19 29 redstone_block
+-- 2 high multiblock (closed roof)
+setblock -79 -62 30 redstone_block
+-- 2 high multiblock (open roof)
+setblock -79 -62 26 redstone_block
+-- 1 high multiblock
+setblock -80 -19 24 redstone_block
+
+## Choose random building
+-- clock at 4gt (2 redstone tick) per cycle
+tag @e[type=armor_stand,name=multiblock,tag=!move] remove fail
+-- randomly pick between staircase or multiblock choosers
+execute as @e[type=armor_stand,name=multiblock,tag=!move] store result score @s rng run random value 1..100
+-- 1 level, first level
+execute if score .global level matches 1 if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 1 run {1 high multiblock} setblock -80 -19 24 redstone_block
+------------------
+-- 2 levels, first level, 17% chance of staircase
+execute if score .global level matches 2 if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 1 as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=1..17}] run {trigger stair} setblock -80 -19 29 redstone_block
+-- 2 levels, first level, 17% chance of 2 high multiblock
+execute if score .global level matches 2 if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 1 as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=18..34}] run {trigger 2 high} setblock -79 -62 30 redstone_block
+-- 2 levels, first level, 17% chance of 2 high skylight
+execute if score .global level matches 2 if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 1 as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=35..51}] run {trigger 2 high open} setblock -79 -62 26 redstone_block
+-- 2 levels, first level, 50% chance of 1 high multiblock
+execute if score .global level matches 2 if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 1 as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=52..100}] run {trigger 1 high} setblock -80 -19 24 redstone_block
+-- 2 levels, second level, 100% chance of 1 high
+execute if score .global level matches 2 if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 2 as @e[type=armor_stand,name=multiblock,tag=!move] run {trigger 1 high} setblock -80 -19 24 redstone_block
+-----------------
+-- 3 levels, first level, 17% chance staircase
+execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 1 as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=1..17}] run {trigger staircase} setblock -80 -19 29 redstone_block
+-- 3 levels, first level 17% 2 high
+execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 1 as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=18..34}] run {trigger 2 high} setblock -79 -62 30 redstone_block
+-- 3 levels, first level 66% one high
+execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 1 as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=35..100}] run {trigger 1 high} setblock -80 -19 24 redstone_block
+---------------
+-- create a number for the second to last level
+execute if score .global level matches 3.. run scoreboard players operation .var level = .global level
+-- conditional (subtract by 1)
+scoreboard players remove .var level 1
+-- 3 levels, middle levels, 25% stair
+execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 2.. if score @n[type=armor_stand,name=corner,tag=multiblock] level < .var level as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=0..25}] run {trigger stair} setblock -80 -19 29 redstone_block
+-- 3 levels, middle levels, 25% 2 high
+execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 2.. if score @n[type=armor_stand,name=corner,tag=multiblock] level < .var level as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=26..50}] run {trigger 2 high} setblock -79 -62 30 redstone_block
+-- 3 levels, middle levels, 50% 1 high
+execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level matches 2.. if score @n[type=armor_stand,name=corner,tag=multiblock] level < .var level as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=51..100}] run {trigger 1 high} setblock -80 -19 24 redstone_block
+-- 3 levels, second to last level, 17% stair
+execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level = .var level as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=0..17}] run {trigger stair} setblock -80 -19 29 redstone_block
+-- 3 levels, second to last level, 17% 2 high
+execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level = .var level as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=18..34}] run {trigger 2 high} setblock -79 -62 30 redstone_block
+-- 3 levels, second to last level, 17% 2 high open
+execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level = .var level as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=35..51}] run {trigger 2 high open} setblock -79 -62 26 redstone_block
+-- 3 levels, second to last level, 49% 1 high
+execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level = .var level as @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=52..100}] run {trigger 1 high} setblock -80 -19 24 redstone_block
+-- 3 levels, top level, 100% high
+execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level = .global level as @e[type=armor_stand,name=multiblock,tag=!move] run {trigger 1 high} setblock -80 -19 24 redstone_block
+----------------
+-- if multiblockfill percentage is exceeded, stop
+execute as @e[type=armor_stand,name=multiblock,tag=!move,scores={multiblockFill=..0}] at @s run tp @s ~ -130 ~
+-- conditional
+kill @e[type=armor_stand,name=multiblock]
+-- conditional
+{start next multiblock level}
+-- stop loop if no multiblock exists
+execute unless entity @e[type=armor_stand,name=multiblock] run {delete redstone dust}
+-- if cell is already filled roll new position
+execute as @e[type=armor_stand,name=multiblock,tag=!move,scores={multiblockFill=1..}] at @s unless blocks ~-3 ~ ~-3 ~3 ~6 ~3 ~ ~100 ~ all run {new random position}
+-- after 5 attempts roll new position
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!move] attempts 1
+execute if entity @e[type=armor_stand,name=multiblock,tag=!move,scores={attempts=..0}] run {new random position}
+
+
+## Randomizer arrays:
+-- for each encoder change the score number
+execute as @e[type=armor_stand,name=multiblock] store result score @s rng run random value 1..{max value}
+execute if entity @e[type=armor_stand,name=multiblock,tag=!move,scores={rng=1}] run {trigger spawn multiblock}
+{Repeat chains for all possible values of 1..max}
+
+-- Reference encode.py
+-- Example encoder commands
+-- armor stand rotation changes depending on building rotation
+execute as @e[type=armor_stand,name=multiblock] run rotate @s 180 0
+-- check for empty space
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^x ^y ^z ^x ^y ^z ~ ~100 ~ all run tag @s add fail
+-- check for open in front of armor stand
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 diamond_block run tag @s fail
+{repeat chains for all sides}
+execute as @e[type=armor_stand,name=multiblock,tag=!fail] at @s run {new random position}
+-- conditional
+-- spawn multiblock
+execute as @e[name=multiblock] at @s run place template {spawn multiblock}
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock] multiblockFill {size}
+-- conditional
+execute store result bossbar minecraft:maze_progress value run scoreboard players add .global mazeProgress {same size as multiblockFill}
+
+======================================================
+
+-- decoder commands (used for maze generate)
+north
+closed
+setblock -78 3 26 redstone_block
+hidden
+setblock -78 3 25 redstone_block
+open
+fill -78 3 26 -78 3 25 redstone_block
+
+east
+closed
+setblock -78 3 24 redstone_block
+hidden
+setblock -78 3 23 redstone_block
+open
+fill -78 3 24 -78 3 23 redstone_block
+
+south
+closed
+setblock -78 3 22 redstone_block
+hidden
+setblock -78 3 21 redstone_block
+open
+fill -78 3 22 -78 3 21 redstone_block
+
+west
+closed
+setblock -78 3 20 redstone_block
+hidden
+setblock -78 3 19 redstone_block
+open
+fill -78 3 20 -78 3 19 redstone_block
+
+# MAZE GENERATION
+-- maze generate code works on a 5 redstone tick (10 gt) clock
+-- this script ASSUMES that a "corner" is tagged maze
+## init
+-- kill all paths
+execute as @e[type=armor_stand,name=path] at @s run tp @s ~ -130 ~
+kill @e[type=armor_stand,name=path]
+-- kill all mazes
+execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ -130 ~
+kill @e[type=armor_stand,name=maze]
+-- summon new path
+execute as @e[type=armor_stand,name=corner,tag=maze] at @s run summon armor_stand ~ ~ ~ {CustomName:path,CustomNameVisible:1b,NoGravity:1b}
+execute as @e[type=armor_stand,name=path] at @s run rotate @s 180 0
+-- summon new maze
+execute as @e[type=armor_stand,name=path] at @s run summon armor_stand ~ ~ ~ {CustomName:maze,CustomNameVisible:1b,NoGravity:1b}
+{set reset redstone block to air on code}
+{set redstone wire}
+{start loop by placing redstone block}
+
+## Path Spiral
+-- to kill this algorithm, kill path
+-- path algorithm
+-- loop
+execute as @e[type=armor_stand,name=path] at @s positioned ^ ^ ^7 if block ~ ~-100 ~ emerald_block at @s run tp @s ~ ~ ~ ~90 0
+-- spiral end: there's already a filled cell to the right --> kill path and maze
+execute as @e[type=armor_stand,name=path] at @s positioned ^ ^ ^7 if block ~ ~-100 ~ emerald_block run tp @s ~ -130 ~
+-- conditional
+kill @e[type=armor_stand,name=path]
+-- conditional
+{run maze end}
+-- stop loop when finished
+execute unless entity @e[type=armor_stand,name=path] run {stop redstone loop}
+-- conditional
+execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ -130 ~
+-- conditional
+kill @e[type=armor_stand,name=maze]
+----------------------------
+execute as @e[type=armor_stand,name=path] at @s run tp @n[type=armor_stand,name=maze] ~ ~ ~ 180 0
+-- path is in the room that generated last loop. Add these tags before teleporting to generate the next room.
+-- These ready commands cannot be placed after the Maze Generate section because it takes time for the encoder to trigger.
+execute as @e[type=armor_stand,name=path] at @s run tag @e[type=armor_stand,name=room,tag=lootSpot,distance=..10] add lootReady
+execute as @e[type=armor_stand,name=path] at @s run tag @e[type=armor_stand,name=portal,distance=..10] add portalReady
+-- needs redstone (on the first iteration, path is already in the first cell location so it doesn't need to move.)
+execute as @e[type=armor_stand,name=path] at @s run tp @s ^ ^ ^7
+-- Activate the needs redstone command block that lets path move (tp ^ ^ ^7)
+{Activate command block}
+-- increment maze Progress
+execute store result bossbar minecraft:maze_progress value run scoreboard players add .global mazeProgress 1
+execute as @e[type=armor_stand,name=path] at @s run setblock ~ ~-100 ~ emerald_block
+
+## Generate Room (happens right after the above)
+-- loop:
+scoreboard players set @e[type=armor_stand,name=maze] closedCount 0
+-- redundant
+execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ ~ ~ 180 0
+### Check adjacent walls
+-- repeat 4 times:
+execute as @e[type=armor_stand,name=maze,tag=!final] at @s if blocks ~-2 ~ ~-2 ~2 ~6 ~2 ~ ~100 ~ all unless block ^ ^ ^4 air run tag @s add fullWall
+execute as @e[name=maze,tag=fullWall] at @s run clone ^ ^ ^4 ^ ^ ^4 ^ ^ ^3
+execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 netherite_block run scoreboard players add @s closedCount 1
+execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 netherite_block run {direction closed}
+execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 diamond_block run {direction open}
+execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 gold_block run {direction hidden}
+tag @e[name=maze,tag=fullWall] remove fullWall
+execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ ~ ~ ~90 0
+
+### FILL IN MISSING WALLS
+-- repeat 4 times:
+-- generate random number
+execute as @e[type=armor_stand,name=maze,tag=!final] at @s if blocks ~-2 ~ ~-2 ~2 ~6 ~2 ~ ~100 ~ all if block ^ ^ ^3 air run tag @s add emptyWall
+execute store result score @e[type=armor_stand,name=maze,tag=emptyWall] rng run random value 0..100
+-- 2 or more walls
+execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 2..4 if score @s rng matches 0..70 run setblock ^ ^ ^3 diamond_block
+-- conditional
+{direction open}
+execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 2..4 if score @s rng matches 71..100 run setblock ^ ^ ^3 gold_block
+-- conditional
+{direction hidden}
+-- less than 2 walls
+execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 0..15 run setblock ^ ^ ^3 diamond_block
+-- conditional
+{direction open}
+execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 16..30 run setblock ^ ^ ^3 gold_block
+-- conditional
+{direction hidden}
+execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 31..100 run setblock ^ ^ ^3 netherite_block
+-- conditional
+{direction closed}
+-- conditional:
+scoreboard players add @e[type=armor_stand,name=maze] closedCount 1
+tag @e[name=maze,tag=emptyWall] remove emptyWall
+execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ ~ ~ ~90 0
+
+================================================
+
+# Portal Commands
+-- markers cannot for portal armor stands because structures do not rotate markers
+
+-- summon portal
+/execute as @s at @s align xyz positioned ~0.5 ~ ~0.5 run summon armor_stand ~2 ~ ~ {CustomName:portal,Rotation:[90,0],Invisibility:1b}
+
+-- path should mark portals as portalReady
+execute as @e[type=armor_stand,name=path] at @s run tag @e[type=armor_stand,name=portal,distance=..5] add portalReady
+-- initial portal setup
+scoreboard players set @e[tag=portalReady] portalID 0
+scoreboard players set @e[tag=portalReady] targetID 0
+scoreboard players set .global portalID 1
+scoreboard players set @a portalTime 0
+{activate portal loop during game}
+
+-- loop (assign ids to portals)
+scoreboard players operation @e[tag=portalReady,scores={portalID=0},limit=1] portalID = .global portalID
+scoreboard players add .global portalID 1
+execute unless entity @e[tag=portalReady,scores={portalID=0}] run {end loop}
+-- if only one portal exists, skip the linking stage.
+-- conditional
+/execute unless score .global portalID matches 2 run {activate portal linking}
+
+-- loop (link portal pairs)
+execute unless entity @e[tag=portalReady,scores={targetID=0}] run {end loop}
+-- conditional
+{start next}
+-- conditional
+{maze end}
+-- randomly select portal 1
+tag @e[tag=portalReady,scores={targetID=0},sort=random,limit=1] add portal1
+-- (generate trio) if there are no portals remaining, make a 3 way portal
+-- portal1 is the new 3rd portal, portal2 is one portal of another random pair
+execute unless entity @e[tag=portalReady,tag=!portal1,scores={targetID=0}] run tag @e[tag=portalReady,tag=!portal1,sort=random,limit=1] add portal2
+-- conditional
+scoreboard players operation @e[tag=portal1] targetID = @e[tag=portal2] targetID
+-- conditional
+scoreboard players operation @e[tag=portal2] targetID = @e[tag=portal1] portalID
+-- (generate pair) randomly select other portal if there are still portals remaining
+tag @e[tag=portalReady,tag=!portal1,scores={targetID=0},sort=random,limit=1] add portal2
+-- conditional
+scoreboard players operation @e[tag=portal1] targetID = @n[tag=portal2] portalID
+-- conditional
+scoreboard players operation @e[tag=portal2] targetID = @n[tag=portal1] portalID
+tag @e[tag=portal1] remove portal1
+tag @e[tag=portal2] remove portal2
+
+## logic
+-- there's a problem if two players enter the portal at the same exact tick
+execute as @e[tag=portalReady] at @s positioned ^ ^ ^1.5 run tag @p[distance=..1.5,scores={portalTime=..0}] add portal
+-- CHANGED
+execute as @p[tag=portal] at @s if score @n[tag=portalReady,distance=..3] targetID matches 0 at @n[type=armor_stand,name=spawn,tag=spawnReady] run tp @s ~ ~ ~
+execute as @p[tag=portal] at @s run execute as @e[tag=portalReady,distance=3..] if score @s portalID = @n[tag=portalReady,distance=..3] targetID at @s run tp @p[tag=portal] ^ ^ ^3.5 facing ^ ^ ^8
+-- 1 second cooldown
+scoreboard players set @p[tag=portal] portalTime 20
+-- spectators can't make portal sounds
+execute if entity @a[tag=portal,team=!spectator] as @a at @a[tag=portal,team=!spectator] run playsound entity.enderman.teleport
+tag @a[tag=portal] remove portal
+scoreboard players remove @a[scores={portalTime=1..}] 1
+
+
+execute as @e[tag=portalReady] at @s positioned ^ ^ ^1.5 run tp @p[distance=..1] ^ ^ ^4
+
+
+## Logic testing
+execute as @a at @s if entity @e[tag=portalReady,distance=..0.5] run tag @s add portal
+execute as @p[tag=portal] at @s run execute as @e[tag=portalReady,distance=1..] if score @s portalID = @n[tag=portalReady,distance=..0.5] targetID at @s run tp @p[tag=portal] ^ ^ ^2
+tag @a[tag=portal] remove portal
+
+===============================================
+
+# Maze Finished
+{forceload remove}
+tellraw @a {color:yellow,text:"Generation Finished"}
+bossbar set minecraft:maze_progress visible false
+-- Set the maze state to built
+scoreboard players set @n[type=armor_stand,name=origin] mazeState 2
+tick rate 20
+
+==========================================================
+
+# Clear Everything
+-- summons 1 ray in the x direction, and from that ray, summons multiple rays in the z direction.
+-- 49 block margin above corner to try and capture the dome (multiple of 7 that's close to 50)
+
+## Attempt Clear (User input)
+-- only clear if the maze is being built or is fully built
+execute if entity @n[type=armor_stand,name=origin,scores={mazeState=1..2}] run {start listener}
+-- conditional
+tellraw @a {color:green,text:"Clearing Maze"}
+-- conditional
+execute unless entity @n[type=armor_stand,name=origin,tag=loaded] run {start load add}
+-- error messages
+execute if entity @n[type=armor_stand,name=origin,scores={mazeState=0}] at @e[type=armor_stand,name=console] run tellraw @a[distance=..10] {color:red,text:"No maze exists. Cannot Clear."}
+execute if entity @n[type=armor_stand,name=origin,scores={mazeState=3}] at @e[type=armor_stand,name=console] run tellraw @a[distance=..10] {color:red,text:"Already clearing"}
+
+## Listener for loaded
+-- since this is activated at the same tick as init forceload, use a 2 tick redstone delay to power this repeating command block
+execute if entity @n[type=armor_stand,name=origin,tag=loaded] run setblock ~1 ~ ~-2 air
+-- conditional
+{start init}
+
+## init
+-- select the top most corner
+execute as @e[type=armor_stand,name=corner] at @s if score @s level = .global level run summon armor_stand ~ ~49 ~ {CustomName:yclear,CustomNameVisible:1b,NoGravity:1b,Tags:["clear"]}
+-- hide the progress bar
+bossbar set minecraft:maze_progress visible false
+{start next}
+
+-- loop
+-- summon armor stands
+execute as @e[type=armor_stand,name=yclear] at @s run summon armor_stand ~ ~ ~ {CustomName:xclear,CustomNameVisible:1b,NoGravity:1b,Tags:["clear"]}
+execute as @e[type=armor_stand,name=yclear] at @s run scoreboard players operation @n[type=armor_stand,name=xclear,distance=..1] x = .global x
+execute as @e[type=armor_stand,name=xclear] at @s run summon armor_stand ~ ~ ~ {CustomName:zclear,CustomNameVisible:1b,NoGravity:1b,Tags:["clear"]}
+execute as @e[type=armor_stand,name=xclear] at @s run scoreboard players operation @n[type=armor_stand,name=zclear,distance=..1] z = .global z
+-- move clear armor stands
+execute as @e[type=armor_stand,name=xclear] at @s run tp @s ~21 ~ ~
+scoreboard players remove @e[type=armor_stand,name=xclear] x 3
+execute as @e[type=armor_stand,name=zclear] at @s run tp @s ~ ~ ~-21
+scoreboard players remove @e[type=armor_stand,name=zclear] z 3
+execute as @e[type=armor_stand,name=yclear] at @s run tp @s ~ ~-7 ~
+-- cleanup
+kill @e[type=armor_stand,name=xclear,scores={x=..-1}]
+kill @e[type=armor_stand,name=zclear,scores={z=..-1}]
+-- stop clearing at y=-55
+execute as @e[type=armor_stand,name=yclear] at @s run kill @s[y=-63,dy=7]
+-- Stop loop
+execute unless entity @e[type=armor_stand,tag=clear] run {stop loop}
+-- conditional
+{start forceload remove}
+-- conditional
+{Start Listener for forceload remove}
+-- fill in 3x1x3 cell areas
+-- there's a 1 cell overlap (clear a 4x4 cell, but only move in increments in 3 cells)
+execute as @e[type=armor_stand,tag=clear] at @s run fill ~-10 ~ ~-17 ~17 ~6 ~10 air
+-- clear all entities except for players and origin
+-- there's a -1 y tolerance to capture the markers
+execute as @e[type=armor_stand,tag=clear] at @s positioned ~-10 ~-1 ~-17 run kill @e[type=!player,tag=!clear,name=!origin,dx=28,dy=7,dz=28]
+
+## Forceload remove listener
+-- repeating
+execute if entity @e[type=armor_stand,name=origin,tag=!loaded] run {stop this loop}
+-- conditional
+tellraw @a {color:green,text:"Clear Completed"}
+-- conditional
+scoreboard players set @e[type=armor_stand,name=origin] mazeState 0
+
+=====================================
+
+# Give bows
+execute align xyz run summon armor_stand ~0.5 ~ ~0.5 {CustomName:giveBow,NoGravity:1b,Small:1b,Invisible:1b,Marker:1b}
+
+-- loop
+-- give crossbow
+-- crossbow[charged_projectiles=[{id:arrow,components:{intangible_projectile:{}}}]]
+execute at @e[type=armor_stand,name=giveBow] as @a[distance=..1,team=!spectator] unless entity @s[nbt={Inventory:[{id:"minecraft:bow"}]}] run give @s bow[enchantments={infinity:1}]
+execute at @e[type=armor_stand,name=giveBow] as @a[distance=..1,team=!spectator] unless entity @s[nbt={Inventory:[{id:"minecraft:arrow"}]}] run give @s arrow
+-- remove items
+-- execute at @e[type=armor_stand,name=giveBow] as @a[distance=1.1..3] run clear @s crossbow
+-- execute at @e[type=armor_stand,name=giveBow] as @a[distance=..3] run clear @s crossbow[charged_projectiles=[]]
+execute at @e[type=armor_stand,name=giveBow] as @a[distance=1.1..3] run clear @s bow
+execute at @e[type=armor_stand,name=giveBow] as @a[distance=1.1..3] run clear @s arrow
+-- kill items (if kill items doesn't work, use data modify PickupDelay 0)
+execute at @e[type=armor_stand,name=giveBow] run execute as @e[type=item,nbt={Item:{id:"minecraft:bow"}},distance=..5] at @s run tp @s ~ -130 ~
+execute at @e[type=armor_stand,name=giveBow] run execute as @e[type=item,nbt={Item:{id:"minecraft:arrow"}},distance=..5] at @s run tp @s ~ -130 ~
+
+
+==============================================
+
+# Maze generate commands fully flushed out (the above is a template, but below is the actual commands)
+execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ ~ ~ 180 0
+/scoreboard players set @e[type=armor_stand,name=maze] closedCount 0
+
+/execute as @e[type=armor_stand,name=maze] at @s if blocks ~-2 ~ ~-2 ~2 ~6 ~2 ~ ~100 ~ all unless block ^ ^ ^4 air run tag @s add fullWall
+/execute as @e[name=maze,tag=fullWall] at @s run clone ^ ^ ^4 ^ ^ ^4 ^ ^ ^3
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 netherite_block run scoreboard players add @s closedCount 1
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 netherite_block run setblock -78 3 26 redstone_block
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 diamond_block run fill -78 3 26 -78 3 25 redstone_block
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 gold_block run setblock -78 3 25 redstone_block
+/tag @e[name=maze,tag=fullWall] remove fullWall
+/execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ ~ ~ ~90 0
+
+/execute as @e[type=armor_stand,name=maze] at @s if blocks ~-2 ~ ~-2 ~2 ~6 ~2 ~ ~100 ~ all unless block ^ ^ ^4 air run tag @s add fullWall
+/execute as @e[name=maze,tag=fullWall] at @s run clone ^ ^ ^4 ^ ^ ^4 ^ ^ ^3
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 netherite_block run scoreboard players add @s closedCount 1
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 netherite_block run setblock -78 3 24 redstone_block
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 diamond_block run fill -78 3 24 -78 3 23 redstone_block
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 gold_block run setblock -78 3 23 redstone_block
+/tag @e[name=maze,tag=fullWall] remove fullWall
+/execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ ~ ~ ~90 0
+
+/execute as @e[type=armor_stand,name=maze] at @s if blocks ~-2 ~ ~-2 ~2 ~6 ~2 ~ ~100 ~ all unless block ^ ^ ^4 air run tag @s add fullWall
+/execute as @e[name=maze,tag=fullWall] at @s run clone ^ ^ ^4 ^ ^ ^4 ^ ^ ^3
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 netherite_block run scoreboard players add @s closedCount 1
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 netherite_block run setblock -78 3 22 redstone_block
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 diamond_block run fill -78 3 22 -78 3 21 redstone_block
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 gold_block run setblock -78 3 21 redstone_block
+/tag @e[name=maze,tag=fullWall] remove fullWall
+/execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ ~ ~ ~90 0
+
+/execute as @e[type=armor_stand,name=maze] at @s if blocks ~-2 ~ ~-2 ~2 ~6 ~2 ~ ~100 ~ all unless block ^ ^ ^4 air run tag @s add fullWall
+/execute as @e[name=maze,tag=fullWall] at @s run clone ^ ^ ^4 ^ ^ ^4 ^ ^ ^3
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 netherite_block run scoreboard players add @s closedCount 1
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 netherite_block run setblock -78 3 20 redstone_block
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 diamond_block run fill -78 3 20 -78 3 19 redstone_block
+/execute as @e[name=maze,tag=fullWall] at @s if block ^ ^ ^3 gold_block run setblock -78 3 19 redstone_block
+/tag @e[name=maze,tag=fullWall] remove fullWall
+/execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ ~ ~ ~90 0
+
+----- FILL EMPTY WALLS -----
+
+/execute as @e[type=armor_stand,name=maze] at @s if blocks ~-2 ~ ~-2 ~2 ~6 ~2 ~ ~100 ~ all if block ^ ^ ^3 air run tag @s add emptyWall
+/execute store result score @e[type=armor_stand,name=maze,tag=emptyWall] rng run random value 0..100
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 2..4 if score @s rng matches 0..70 run setblock ^ ^ ^3 diamond_block
+-- conditional
+fill -78 3 26 -78 3 25 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 2..4 if score @s rng matches 71..100 run setblock ^ ^ ^3 gold_block
+-- conditional
+setblock -78 3 25 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 0..15 run setblock ^ ^ ^3 diamond_block
+-- conditional
+fill -78 3 26 -78 3 25 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 16..30 run setblock ^ ^ ^3 gold_block
+-- conditional
+setblock -78 3 25 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 31..100 run setblock ^ ^ ^3 netherite_block
+--conditional
+setblock -78 3 26 redstone_block
+-- conditional:
+/scoreboard players add @e[type=armor_stand,name=maze] closedCount 1
+/tag @e[name=maze,tag=emptyWall] remove emptyWall
+/execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ ~ ~ ~90 0
+
+/execute as @e[type=armor_stand,name=maze] at @s if blocks ~-2 ~ ~-2 ~2 ~6 ~2 ~ ~100 ~ all if block ^ ^ ^3 air run tag @s add emptyWall
+/execute store result score @e[type=armor_stand,name=maze,tag=emptyWall] rng run random value 0..100
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 2..4 if score @s rng matches 0..70 run setblock ^ ^ ^3 diamond_block
+-- conditional
+fill -78 3 24 -78 3 23 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 2..4 if score @s rng matches 71..100 run setblock ^ ^ ^3 gold_block
+-- conditional
+setblock -78 3 23 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 0..15 run setblock ^ ^ ^3 diamond_block
+-- conditional
+fill -78 3 24 -78 3 23 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 16..30 run setblock ^ ^ ^3 gold_block
+-- conditional
+setblock -78 3 23 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 31..100 run setblock ^ ^ ^3 netherite_block
+--conditional
+setblock -78 3 24 redstone_block
+-- conditional:
+/scoreboard players add @e[type=armor_stand,name=maze] closedCount 1
+/tag @e[name=maze,tag=emptyWall] remove emptyWall
+/execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ ~ ~ ~90 0
+
+/execute as @e[type=armor_stand,name=maze] at @s if blocks ~-2 ~ ~-2 ~2 ~6 ~2 ~ ~100 ~ all if block ^ ^ ^3 air run tag @s add emptyWall
+/execute store result score @e[type=armor_stand,name=maze,tag=emptyWall] rng run random value 0..100
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 2..4 if score @s rng matches 0..70 run setblock ^ ^ ^3 diamond_block
+-- conditional
+fill -78 3 22 -78 3 21 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 2..4 if score @s rng matches 71..100 run setblock ^ ^ ^3 gold_block
+-- conditional
+setblock -78 3 21 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 0..15 run setblock ^ ^ ^3 diamond_block
+-- conditional
+fill -78 3 22 -78 3 21 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 16..30 run setblock ^ ^ ^3 gold_block
+-- conditional
+setblock -78 3 21 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 31..100 run setblock ^ ^ ^3 netherite_block
+--conditional
+setblock -78 3 22 redstone_block
+-- conditional:
+/scoreboard players add @e[type=armor_stand,name=maze] closedCount 1
+/tag @e[name=maze,tag=emptyWall] remove emptyWall
+/execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ ~ ~ ~90 0
+
+/execute as @e[type=armor_stand,name=maze] at @s if blocks ~-2 ~ ~-2 ~2 ~6 ~2 ~ ~100 ~ all if block ^ ^ ^3 air run tag @s add emptyWall
+/execute store result score @e[type=armor_stand,name=maze,tag=emptyWall] rng run random value 0..100
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 2..4 if score @s rng matches 0..70 run setblock ^ ^ ^3 diamond_block
+-- conditional
+fill -78 3 20 -78 3 19 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 2..4 if score @s rng matches 71..100 run setblock ^ ^ ^3 gold_block
+-- conditional
+setblock -78 3 19 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 0..15 run setblock ^ ^ ^3 diamond_block
+-- conditional
+fill -78 3 20 -78 3 19 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 16..30 run setblock ^ ^ ^3 gold_block
+-- conditional
+setblock -78 3 19 redstone_block
+/execute as @e[name=maze,tag=emptyWall] at @s if score @s closedCount matches 0..1 if score @s rng matches 31..100 run setblock ^ ^ ^3 netherite_block
+--conditional
+setblock -78 3 20 redstone_block
+-- conditional:
+/scoreboard players add @e[type=armor_stand,name=maze] closedCount 1
+/tag @e[name=maze,tag=emptyWall] remove emptyWall
+/execute as @e[type=armor_stand,name=maze] at @s run tp @s ~ ~ ~ ~90 0
+
+

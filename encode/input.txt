@@ -1,0 +1,29 @@
+# Multiblocks
+-- multiblockFill values are based on the floor area ignoring height. Ex: both 2x1x2 and 2x2x2 have a multiblockFill of 4
+-- 1x2
+multiblock_prison|hhocoh|0,4 -4,0 -4,-7 0,-11 4,-7 4,0|2
+multiblock_archery|chocoh|0,4 -4,0 -4,-7 0,-11 4,-7 4,0|2
+multiblock_storage|cohcoh|0,4 -4,0 -4,-7 0,-11 4,-7 4,0|2
+multiblock_meeting_room|chhcoo|0,4 -4,0 -4,-7 0,-11 4,-7 4,0|2
+multiblock_office|ochchc|0,4 -4,0 -4,-7 0,-11 4,-7 4,0|2
+-- 2 floors
+multiblock_overlook|coccoh hhcoch|0,4 -4,0 -4,-7 0,-11 4,-7 4,0|2
+multiblock_greenroom|hccocc cccccc|0,4 -4,0 -4,-7 0,-11 4,-7 4,0|2
+
+-- 2x2
+multiblock_training|ccoohhoo|0,4 -7,4 -11,0 -11,-7 -7,-11 0,-11 4,-7 4,0|4
+multiblock_dining|hhcchhoo|0,4 -7,4 -11,0 -11,-7 -7,-11 0,-11 4,-7 4,0|4
+-- 2 floors
+multiblock_courtyard|ooocccco cccooooc|0,4 -7,4 -11,0 -11,-7 -7,-11 0,-11 4,-7 4,0|4
+multiblock_grand_staircase|ochhcocc hoccochc|0,4 -7,4 -11,0 -11,-7 -7,-11 0,-11 4,-7 4,0|4
+multiblock_dining_and_bedroom|cchhccoo hhchohcc|0,4 -7,4 -11,0 -11,-7 -7,-11 0,-11 4,-7 4,0|4
+
+# Staircases
+staircase_bedroom|hchococh
+staircase_piston|chcococh
+staircase_slimejump|oooooooo
+staircase_overgrown|cccococc
+staircase_debris|hhhohohh
+staircase_storage|hohococh
+staircase_spiral|cccoccco
+staircase_shaft|cccoccco

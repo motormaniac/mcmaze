@@ -1,0 +1,443 @@
+# Settings
+- Permanent blindness (T/F, default F)
+- Obscure hider name tags (T/F default T)
+- Obscure seeker name tags (T/F default F)
+- hider speed (T/F default F)
+- seeker speed (T/F default F)
+- Panel for enabling/disabling specific items
+- Time limit
+- Items enabled (T/F default T)
+- Loot speed: how fast loot spawns
+- Start with Item (Players get a random item when game starts)
+- Enable portals (T/F default T)
+
+## Tutorial changes
+Make pre tutorial room
+Tell players to turn sounds on
+Explicitely tell players to remove
+
+## Change Notes
+Adnan needs to connect the gold block in the office redstone
+Change Chicken to Settlers of Catan Robber
+Put a floating bow item display in the bow room
+If no portals spawn in the maze, the process fails
+Change the chicken design
+Track maze state with scoreboard
+Fix all item lores and make sure in game commands match these lores
+Murray was getting the diamond sword by flicking the trapdoor
+Reset spawnprot
+
+Gamemodes
+Freeztag
+Hot potato
+Infection
+Flee the Facility
+Cat and Mouse Reverse Tag
+  - One person is the hider (mouse). They are small and they have to run from everyone. They have speed 1
+  - When a person tags the mouse, they get
+Artifact Steal
+  - Artifact zone should be in the middle
+  - Artifacts spawn in at the middle throughout the game (max 3)
+  - Map should be longer and thinner
+  - Bring artifact back to your home base zone
+  - While holding the artifact, you can get tagged by the other team, in which you get stunned
+  - First team to get 2 out of 3 artifacts win
+  - Other team can steal artifact by mining it for some time
+  - Home bases cover the entire short side of the rectangle
+
+Add time limit to generation
+Make bullets trigger mines
+Implement a maze state on origin (0 = empty, 1 = generating, 2 = generated, 3 = clearing)
+Start button can be reclicked
+
+
+# armor stand labels
+-- Seekers
+/execute as @s at @s align xyz run summon armor_stand ~0.5 ~1 ~0.5 {CustomNameVisible:1b,NoGravity:1b,Small:1b,Invisible:1b,Marker:1b,CustomName:{"color":"red","text":"Seekers"}}
+-- Hiders
+/execute as @s at @s align xyz run summon armor_stand ~0.5 ~1 ~0.5 {CustomNameVisible:1b,NoGravity:1b,Small:1b,Invisible:1b,Marker:1b,CustomName:{"color":"aqua","text":"Hiders"}}
+-- Spectators
+/execute as @s at @s align xyz run summon armor_stand ~0.5 ~1 ~0.5 {CustomNameVisible:1b,NoGravity:1b,Small:1b,Invisible:1b,Marker:1b,CustomName:{"color":"gray","text":"Spectators"}}
+-- Start Game
+/execute as @s at @s align xyz run summon armor_stand ~0.5 ~ ~0.5 {CustomNameVisible:1b,NoGravity:1b,Small:1b,Invisible:1b,Marker:1b,CustomName:{"color":"green","text":"Start Game"}}
+-- Cancel
+/execute as @s at @s align xyz run summon armor_stand ~0.5 ~ ~0.5 {CustomNameVisible:1b,NoGravity:1b,Small:1b,Invisible:1b,Marker:1b,CustomName:{"color":"red","text":"Cancel"}}
+-- Back to Main Lobby
+/execute as @s at @s align xyz run summon armor_stand ~0.5 ~ ~0.5 {CustomNameVisible:1b,NoGravity:1b,Small:1b,Invisible:1b,Marker:1b,CustomName:{"color":"white","text":"Back to Main Lobby"}}
+-- Settings
+/execute as @s at @s align xyz run summon armor_stand ~0.5 ~0.5 ~0.5 {CustomNameVisible:1b,NoGravity:1b,Small:1b,Invisible:1b,Marker:1b,CustomName:{"color":"dark_green","text":"Settings"}}
+
+-- Summon spawn armor_stand (unready)
+/execute as @s at @s align xyz run summon armor_stand ~0.5 ~0.5 ~0.5 {CustomName:spawn,Small:1b,NoGravity:1b,Invisible:1b,Marker:1b}
+-- Summon spawn armor stand (ready)
+/execute as @s at @s align xyz run summon armor_stand ~0.5 ~0.5 ~0.5 {CustomName:spawn,Small:1b,NoGravity:1b,Invisible:1b,Marker:1b,Tags:["spawnReady"]}
+
+# Start Button
+-- check for at least 1 seeker and 1 hider
+execute if score .global gameMode matches 1..2 run 
+execute if score
+execute unless entity @p[team=seeker] run tellraw @a {color:yellow,text:"At least one Seeker is required"}
+execute unless entity @p[team=hider] run tellraw @a {color:yellow,text:"At least one Hider is required"}
+scoreboard players set .global time 100
+execute if entity @p[team=seeker] if entity @p[team=hider] if entity @e[type=armor_stand,name=corner] unless entity @e[type=armor_stand,name=path] unless entity @e[type=armor_stand,name=multiblock] run {Countdown Loop}
+
+# Countdown Loop
+-- to cancel the countdown, remove the redstone block to stop the loop
+execute if score .global time matches 100 run tellraw @a {color:yellow,text:"Starting game in 5 seconds. Press the cancel button to stop."}
+execute if score .global time matches 60 run tellraw @a {color:yellow,text:"Game starts in 3 seconds"}
+execute if score .global time matches 40 run tellraw @a {color:yellow,text:"Game starts in 2 seconds"}
+execute if score .global time matches 20 run tellraw @a {color:yellow,text:"Game starts in 1 seconds"}
+-- conditional (repeat for all of 5, 3, 2, 1...)
+execute as @a at @s run playsound minecraft:block.lever.click
+scoreboard players remove .global time 1
+execute if score .global time matches ..0 run {stop loop}
+-- conditional
+{forceload add chunks}
+{start forceload listener}
+
+## Cancel Start Game
+{setblock to cancel loop}
+-- conditional
+tellraw @a {color:red,text:"Game Cancelled"}
+-- conditional
+execute as @a at @s run playsound minecraft:block.lever.click
+
+## Start Game
+-- forceload listener: repeat command block with 2 ticks redstone delay
+gamemode spectator @a[team=spectator]
+gamemode adventure @a[team=!spectator]
+clear @a
+effect clear @a
+time set midnight
+team modify hider nametagVisibility hideForOtherTeams
+tellraw @a {color:yellow, text:"Starting Game"}
+tellraw @a {color:white, text:"Write '/trigger end' at any point to stop the game early."}
+{Start Spawning Items}
+tag @a[team=!spectator] add firework
+{Init Trigger End}
+{Init IDs}
+execute if score .global gameMode matches 1 run {Start Freeze Tag}
+execute if score .global gameMode matches 2 run {Start Mouse}
+
+## Assign Player IDS
+scoreboard players set .global id 1
+scoreboard players set @a id 0
+-- loop:
+scoreboard players operation @r[scores={id=0}] id = .global id
+scoreboard players add .global id 1
+execute unless entity @p[scores={id=0}] run scoreboard players reset .global id
+--conditional
+{stop loop}
+
+-- Start timer is not connected to Assign IDs
+## Start timer
+-- 10 minutes
+scoreboard players set .global time 12000
+execute store result bossbar minecraft:time max run scoreboard players get .global time
+bossbar set minecraft:time players @a
+bossbar set minecraft:time visible true
+{Start Loop}
+
+-- loop:
+scoreboard players remove .global time 1
+execute store result bossbar minecraft:time value run scoreboard players get .global time
+execute if score .global time matches ..0 run {stop loop}
+-- conditional
+title @a title {color:gray,text:"Draw"}
+-- conditional
+tellraw @a {color:gray, text:"The game was a Draw"}
+-- conditional
+execute as @a at @s run playsound minecraft:entity.lightning_bolt.thunder
+-- conditional
+{Trigger Game End}
+
+-- time left notifications
+execute if score .global time matches 6000 run tellraw @a {color:"red",text:"5 minutes left"}
+/execute as @a at @s run playsound minecraft:block.lever.click
+execute if score .global time matches 1200 run tellraw @a {color:"red",text:"1 minute left"}
+/execute as @a at @s run playsound minecraft:block.lever.click
+execute if score .global time matches 600 run tellraw @a {color:"red",text:"30 seconds left"}
+/execute as @a at @s run playsound minecraft:block.lever.click
+execute if score .global time matches 200 run tellraw @a {color:"red",text:"10 seconds left"}
+/execute as @a at @s run playsound minecraft:block.lever.click
+
+## Detect for trigger end
+-- Init
+scoreboard players enable @a end
+scoreboard players set @a end 0
+/tellraw @s {color:gray,text:"Write \"/trigger end\" to vote to end the game. Voting must be unanimous."}
+{Start Loop}
+-- loop
+execute unless entity @a[scores={end=0},team=spectator] run {Trigger Game End}
+-- conditional
+title @a title {color:gray,text:"Draw"}
+-- conditional
+tellraw @a {color:gray, text:"The game was a Draw"}
+-- conditional
+execute as @a at @s run playsound minecraft:entity.lightning_bolt.thunder
+
+======================================
+
+## Start Freeze Tag
+-- Tp players to maze center
+execute as @e[type=armor_stand,name=center] at @s run tag @n[type=armor_stand,name=spawn] add spawnReady
+tp @a @n[type=armor_stand,name=spawn,tag=spawnReady]
+execute at @n[type=armor_stand,name=spawn,tag=spawnReady] run spawnpoint @a ~ ~ ~
+-- Start 15 second beginning
+scoreboard players set .global time 300
+tag @a[team=seeker] add addWait
+scoreboard players set @a[team=seeker] time 300
+{Start Seeker Wait Loops}
+execute as @e[type=armor_stand,name=spawn,tag=spawnReady] at @s positioned ~ ~ ~ as @a run playsound minecraft:music_disc.mellohi record
+tellraw @a {color:red,text:"Seekers come out in 15 seconds. Go hide!"}
+{start loop}
+
+-- wait until 15 seconds is over
+-- loop:
+scoreboard players remove .global time 1
+execute if score .global time matches 0 run {stop loop}
+-- conditional
+{Start Game (After Seeker release)}
+-- conditional
+execute as @a at @s run playsound minecraft:entity.zombie_villager.cure
+-- conditional
+title @a title {color:red,text:"Seekers Released!"}
+-- conditional
+tellraw @a {color:red,text:"Seekers Released!"}
+-- conditional
+stopsound @a record
+
+-- possibly separate loop
+execute if score .global time matches 100 run tellraw @a {color:red, text:"Seekers released in 5 seconds"}
+execute if score .global time matches 80 run tellraw @a {color:red, text:"Seekers released in 4 seconds"}
+execute if score .global time matches 60 run tellraw @a {color:red, text:"Seekers released in 3 seconds"}
+execute if score .global time matches 40 run tellraw @a {color:red, text:"Seekers released in 2 seconds"}
+execute if score .global time matches 20 run tellraw @a {color:red, text:"Seekers released in 1 seconds"}
+-- conditional
+execute as @a at @s run playsound minecraft:block.lever.click
+{...repeat for ticks 100,80,60,40,20 for 5, 4, 3, 2, 1}
+
+## After seekers released
+{start timer}
+{start loot}
+{turn on game loop passives (freezing, seeker wait)}
+{detect seeker win}
+{detect hider win}
+
+## Detect for Seeker Win
+-- loop:
+execute unless entity @a[team=hider] run {Trigger Game End}
+{stop loop}
+-- conditional
+title @a title {color:red,text:"Seekers Win"}
+-- conditional
+tellraw @a {color:red,text:"Seekers Win"}
+-- conditional
+execute as @a at @s run playsound minecraft:entity.lightning_bolt.thunder
+
+## Detect for Hider Win
+
+# Seeker addWait Loop
+-- assume that the seeker's score is already set to the desired number
+execute as @a[tag=addWait] run attribute @s movement_speed base set 0
+execute as @a[tag=addWait] run attribute @s entity_interaction_range base set 0
+execute as @a[tag=addWait] run attribute @s block_interaction_range base set 0
+execute as @a[tag=addWait] run attribute @s jump_strength base set 0
+tag @a[tag=addWait] add wait
+tag @a[tag=addWait] remove addWait
+
+-- Seeker removeWait Loop
+scoreboard players remove @a[team=seeker,tag=wait,scores={time=1..}] time 1
+-- give seeker blindness as long as they're still waiting
+effect give @a[team=seeker,tag=wait] blindness 2
+tag @a[team=seeker,tag=wait,scores={time=..0}] add removeWait
+execute as @a[team=seeker,tag=removeWait] run attribute @s movement_speed base reset
+execute as @a[team=seeker,tag=removeWait] run attribute @s entity_interaction_range base reset
+execute as @a[team=seeker,tag=removeWait] run attribute @s block_interaction_range base reset
+execute as @a[team=seeker,tag=removeWait] run attribute @s jump_strength base reset
+tag @a[tag=removeWait] remove wait
+tag @a[tag=removeWait] remove removeWait
+
+========================================
+
+# Start Mouse
+team join seeker @a[team=!spectator]
+team join hider @r[team=!spectator]
+tag @a[team=seeker] add addCat
+tag @a[team=hider] add addMouse
+execute as @e[type=armor_stand,name=center] at @s run tag @n[type=armor_stand,name=spawn] add spawnReady
+tp @a @n[type=armor_stand,name=spawn,tag=spawnReady]
+execute at @n[type=armor_stand,name=spawn,tag=spawnReady] run spawnpoint @a ~ ~ ~
+scoreboard players reset @a score
+scoreboard objectives setdisplay sidebar score
+{Start all Mouse Loops}
+
+## Detect Mouse Win
+execute as @p[scores={score=20..}] run title @a title [{color:yellow,selector:"@s"},{text:" wins!"}]
+-- conditional
+execute as @p[scores={score=20..}] run tellraw @a [{color:yellow,selector:"@s"},{text:" wins!"}]
+{Stop loop}
+-- conditional
+{Stop Game}
+-- conditional
+execute as @a at @s run playsound minecraft:entity.lightning_bolt.thunder
+
+## Mouse switching
+tag @a[team=hider,nbt={last_hurt_by_player_memory_time:100}] add addCat
+execute as @a[team=hider,nbt={last_hurt_by_player_memory_time:100}] on attacker run tag @s add addMouse
+execute as @a[tag=addMouse] run attribute @s minecraft:scale base set 0.5
+execute as @a[tag=addCat] run attribute @s minecraft:scale base reset
+execute as @a[tag=addMouse] run attribute @s movement_speed modifier add mouse 0.2 add_multiplied_base
+execute as @a[tag=addCat] run attribute @s movement_speed modifier remove mouse
+-- Tom's head
+item replace entity @a[tag=addCat] armor.head with minecraft:player_head[minecraft:custom_name="Tom",profile={properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYzNlODVmYzVlY2Q2MzVlYzY4Y2Q2MGE5MTRjZWU3ZDIwZTUxMzQxNDIwNjRmOTMxNzYyMTUwZTMzMjc4NmYzNSJ9fX0="}]}]
+-- Jerry's head
+item replace entity @a[tag=addMouse] armor.head with minecraft:player_head[minecraft:custom_name="Jerry",profile={properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjc0ZTEyOWYxZTQ5YzNhN2NiMGViN2EzNTQxYTczZDllNDk0NzQ5NmNmZDA0YWZiYzVjYTYwNjYwMzdjMjJmNyJ9fX0="}]}]
+team join hider @a[tag=addMouse]
+team join seeker @a[tag=addCat]
+-- execute as @a[tag=addMouse] run tellraw @a [{color:aqua,text:"The new mouse is "}, {selector:"@s"}]
+tag @a[tag=addMouse] remove addMouse
+tag @a[tag=addCat] remove addCat
+
+## Mouse Switch
+tag @a[team=hider,nbt={last_hurt_by_player_memory_time:100}] add addCat
+execute as @a[team=hider,nbt={last_hurt_by_player_memory_time:100}] on attacker run tag @s add addMouse
+execute as @a[tag=addMouse] run attribute @s minecraft:scale base set 0.5
+execute as @a[tag=addCat] run attribute @s minecraft:scale base reset
+execute as @a[tag=addMouse] run attribute @s movement_speed modifier add mouse 0.2 add_multiplied_base
+execute as @a[tag=addCat] run attribute @s movement_speed modifier remove mouse
+-- Give Tom the Cat's head
+item replace entity @a[tag=addCat] armor.head with minecraft:player_head[minecraft:custom_name="Tom",profile={properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYzNlODVmYzVlY2Q2MzVlYzY4Y2Q2MGE5MTRjZWU3ZDIwZTUxMzQxNDIwNjRmOTMxNzYyMTUwZTMzMjc4NmYzNSJ9fX0="}]}]
+-- Give Jerry the Mouse's head
+item replace entity @a[tag=addMouse] armor.head with minecraft:player_head[minecraft:custom_name="Jerry",profile={properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjc0ZTEyOWYxZTQ5YzNhN2NiMGViN2EzNTQxYTczZDllNDk0NzQ5NmNmZDA0YWZiYzVjYTYwNjYwMzdjMjJmNyJ9fX0="}]}]
+team join hider @a[tag=addMouse]
+team join seeker @a[tag=addCat]
+execute as @a[tag=addMouse] run tellraw @a [{color:aqua,text:"The new mouse is "}, {selector:"@s"}]
+tag @a[tag=addMouse] remove addMouse
+tag @a[tag=addCat] remove addCat
+
+## Cheese loop
+execute as @e[type=armor_stand,name=cheese] at @s run rotate @s ~3 ~
+execute as @e[type=armor_stand,name=cheese] at @s positioned ~ ~2 ~ if entity @p[distance=..2,team=hider] run tag @s add collect
+execute at @e[type=armor_stand,name=cheese,tag=collect] run scoreboard players add @p[team=hider] score 1
+execute at @e[type=armor_stand,name=cheese,tag=collect] as @a run playsound minecraft:entity.generic.eat
+execute at @e[type=armor_stand,name=cheese,tag=collect] run particle minecraft:item{item:sponge} ~ ~2 ~ 0 0 0 0.1 10
+-- Cheese chaining: cheese choose another random loot to spawn cheese within 10 blocks on the same floor
+execute as @e[type=armor_stand,name=cheese,tag=collect] at @s run tp @s ~ -130 ~
+kill @e[type=armor_stand,name=cheese,tag=collect]
+
+## slowly spawn items as time goes on:
+-- Every tick:
+-- give each loot armor stand a random tick from 0 - 5 minutes (1200 t/s, 1200 * 10 = 6000 ticks for 5min span)
+execute unless entity @e[type=armor_stand,tag=lootReady,scores={cheeseRng=0..}] as @e[type=armor_stand,tag=lootReady] store result score @s cheeseRng run random value 1..6000
+-- when cheeseRng is exactly 0, spawn cheese
+execute at @e[type=armor_stand,tag=lootReady,scores={cheeseRng=0}] run summon armor_stand ~ ~-0.5 ~ {Glowing:1b,CustomName:cheese,Invisible:1b,Marker:1b,NoGravity:1b,equipment:{head:{id:"minecraft:player_head",components:{"minecraft:profile":{"properties":[{"name":"textures","value":"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzZjMDFiZmZlY2ZkYWI2ZDNjMGYxYTdjNmRmNmFhMTkzNmYyYWE3YTUxYjU0YTRkMzIzZTFjYWNiYzUzOSJ9fX0="}]}}}}}
+team join cheese @e[type=armor_stand,name=cheese,team=!cheese]
+scoreboard players remove @e[type=armor_stand,tag=lootReady,scores={cheeseRng=0..}] cheeseRng 1
+
+## Reset attributes
+execute as @a run attribute @s minecraft:scale base reset
+execute as @a run attribute @s movement_speed modifier remove mouse
+
+
+====================================
+
+## Stop Game
+{Reset all game loops}
+clear @a
+{Stop item spawning}
+bossbar set minecraft:time visible false
+effect clear @a
+tag @a[tag=cluck] add removeCluck
+tag @a remove firework
+scoreboard players set .global time 100
+team modify hider nametagVisibility never
+tellraw @a {color:yellow,text:"Teleporting back to lobby in 5 seconds"}
+execute if score .global gameMode matches 1 run {Stop Freeze Tag}
+execute if score .global gameMode matches 2 run {Stop Mouse}
+{start loop}
+
+-- loop:
+scoreboard players remove .global time 1
+execute if score .global time matches 0 run {stop loop}
+-- conditional
+{Reset Freeze Players}
+-- conditional
+{go next}
+
+tellraw @a {color:yellow,text:"Teleported back to lobby"}
+-- clear players (again for fireworks)
+clear @a
+{Forceload remove}
+time set day
+spawnpoint @a 686 -43 -549
+-- teleport all players to their respective team areas in the lobby
+-- hiders
+/tp @a[team=hider] 11 8 -11 -45 0
+-- Seekers
+/tp @a[team=seeker] 27 8 -11 45 0
+-- Spectators
+/tp @a[team=spectator] 11 8 5 -135 0
+gamemode adventure @a
+scoreboard objectives setdisplay sidebar
+
+===============================
+
+# Stop Freeze Tag
+{Stop Freeze Tag Game Loops}
+tag @a[tag=wait] add removeWait
+-- The Reset mannequins command is run when everyone is teleported back to lobby
+
+================================
+
+# Stop Cat and Mouse
+-- kill all cheese
+execute as @e[type=armor_stand,name=cheese] at @s run tp @s ~ -130 ~
+kill @e[type=armor_stand,name=cheese]
+-- hide scoreboard
+{Reset attributes}
+{Stop all Cheese loops}
+
+
+=================================
+
+# Map Menu
+/summon item_frame ~ ~ ~ {Fixed:1b,Item:{id:"minecraft:filled_map",count:1,components:{"minecraft:map_id":11}}}
+
+================================
+
+-- Place console armor stand at console location
+execute align xyz run summon armor_stand ~0.5 ~ ~0.5 {CustomName:console,Invisible:1b,Marker:1b,NoGravity:1b}
+
+# Settings
+-- Set default settings
+scoreboard players set .temp x 9
+scoreboard players set .temp z 9
+scoreboard players set .temp level 2
+scoreboard players set .temp multiblockPercentage 20
+
+-- Each settings area has 1. increase, 2. decrease, 3. update sign
+-- update sign should be chained after both increase and decrease. Modify the y coordinate accordingly (+1 or -1)
+## x  (bounds: 5..15)
+execute if score .temp x matches 5..14 run scoreboard players add .temp x 1
+data merge block ~3 ~-1 ~ {front_text:{messages:["width:",{"score":{"name":".temp","objective":"x"}},"",""]}}
+execute if score .temp x matches 6..15 run scoreboard players remove .temp x 1
+data merge block ~3 ~1 ~ {front_text:{messages:["width:",{"score":{"name":".temp","objective":"x"}},"",""]}}
+
+## z  (bounds: 5..15)
+execute if score .temp z matches 5..14 run scoreboard players add .temp z 1
+data merge block ~3 ~-1 ~ {front_text:{messages:["length:",{"score":{"name":".temp","objective":"z"}},"",""]}}
+execute if score .temp z matches 6..15 run scoreboard players remove .temp z 1
+data merge block ~3 ~1 ~ {front_text:{messages:["length:",{"score":{"name":".temp","objective":"z"}},"",""]}}
+
+## level  (bounds: 1..10)
+execute if score .temp level matches 1..9 run scoreboard players add .temp level 1
+data merge block ~3 ~-1 ~ {front_text:{messages:["height:",{"score":{"name":".temp","objective":"level"}},"",""]}}
+execute if score .temp level matches 2..10 run scoreboard players remove .temp level 1
+data merge block ~3 ~1 ~ {front_text:{messages:["height:",{"score":{"name":".temp","objective":"level"}},"",""]}}
+
+## multiblockPercentage  (bounds: 10..50)
+execute if score .temp multiblockPercentage matches 10..49 run scoreboard players add .temp multiblockPercentage 5
+data merge block ~3 ~-1 ~ {front_text:{messages:["percentage:",{"score":{"name":".temp","objective":"multiblockPercentage"}},"",""]}}
+execute if score .temp multiblockPercentage matches 11..50 run scoreboard players remove .temp multiblockPercentage 5
+data merge block ~3 ~1 ~ {front_text:{messages:["percentage:",{"score":{"name":".temp","objective":"multiblockPercentage"}},"",""]}}

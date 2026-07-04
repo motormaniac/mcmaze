@@ -1,0 +1,48 @@
+# Repeats for all:
+-- Rotations:
+execute as @e[type=armor_stand,name=maze] run rotate @s 180 0
+execute as @e[type=armor_stand,name=maze] run rotate @s -90 0
+execute as @e[type=armor_stand,name=maze] run rotate @s 0 0
+execute as @e[type=armor_stand,name=maze] run rotate @s 90 0
+-- Run at the end:
+execute if entity @e[type=armor_stand,name=maze,tag=!fail] run setblock -74 3 21 redstone_block
+-- conditional
+{Run place command}
+
+# heading
+-- comment
+# prison: hhocoh
+execute as @e[type=armor_stand,name=maze] at @s unless blocks ^-3 ^ ^-10 ^3 ^6 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^-4 ^ ^-7 air unless block ^-4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ gold_block run tag @s add fail
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=maze,tag=!fail] multiblockFill 2
+
+# prison: hhocoh
+execute as @e[type=armor_stand,name=maze] at @s unless blocks ^-3 ^ ^-10 ^3 ^6 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^-4 ^ ^-7 air unless block ^-4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ gold_block run tag @s add fail
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=maze,tag=!fail] multiblockFill 4
+
+
+-- comment #2
+# prison: hhocoh
+execute as @e[type=armor_stand,name=maze] at @s unless blocks ^-3 ^ ^-10 ^3 ^6 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^-4 ^ ^-7 air unless block ^-4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=maze] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ gold_block run tag @s add fail
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=maze,tag=!fail] multiblockFill 8
+

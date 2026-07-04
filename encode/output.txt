@@ -1,0 +1,422 @@
+# Repeats for all:
+-- Rotations:
+execute as @e[type=armor_stand,name=multiblock] run rotate @s 180 0
+execute as @e[type=armor_stand,name=multiblock] run rotate @s -90 0
+execute as @e[type=armor_stand,name=multiblock] run rotate @s 0 0
+execute as @e[type=armor_stand,name=multiblock] run rotate @s 90 0
+-- Run at the end:
+execute if entity @e[type=armor_stand,name=multiblock,tag=!fail] run setblock -74 3 21 redstone_block
+-- conditional
+{Run place command}
+
+# Multiblocks
+-- multiblockFill values are based on the floor area ignoring height. Ex: both 2x1x2 and 2x2x2 have a multiblockFill of 4
+-- 1x2
+# multiblock_prison: hhocoh
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-10 ^3 ^6 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^-7 air unless block ^-4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ gold_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_prison ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_prison ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_prison ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_prison ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 2
+
+# multiblock_archery: chocoh
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-10 ^3 ^6 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^-7 air unless block ^-4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ gold_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_archery ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_archery ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_archery ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_archery ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 2
+
+# multiblock_storage: cohcoh
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-10 ^3 ^6 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^-7 air unless block ^-4 ^ ^-7 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ gold_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_storage ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_storage ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_storage ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_storage ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 2
+
+# multiblock_meeting_room: chhcoo
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-10 ^3 ^6 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^-7 air unless block ^-4 ^ ^-7 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ diamond_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_meeting_room ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_meeting_room ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_meeting_room ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_meeting_room ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 2
+
+# multiblock_office: ochchc
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-10 ^3 ^6 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^-7 air unless block ^-4 ^ ^-7 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ netherite_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_office ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_office ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_office ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_office ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 2
+
+-- 2 floors
+# multiblock_overlook: coccoh hhcoch
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-10 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^-7 air unless block ^-4 ^ ^-7 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^4 air unless block ^ ^7 ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^7 ^ air unless block ^-4 ^7 ^ gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^7 ^-7 air unless block ^-4 ^7 ^-7 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^-11 air unless block ^ ^7 ^-11 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^-7 air unless block ^4 ^7 ^-7 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^ air unless block ^4 ^7 ^ gold_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_overlook ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_overlook ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_overlook ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_overlook ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 2
+
+# multiblock_greenroom: hccocc cccccc
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-10 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^-7 air unless block ^-4 ^ ^-7 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^4 air unless block ^ ^7 ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^7 ^ air unless block ^-4 ^7 ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^7 ^-7 air unless block ^-4 ^7 ^-7 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^-11 air unless block ^ ^7 ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^-7 air unless block ^4 ^7 ^-7 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^ air unless block ^4 ^7 ^ netherite_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_greenroom ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_greenroom ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_greenroom ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_greenroom ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 2
+
+
+-- 2x2
+# multiblock_training: ccoohhoo
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-10 ^ ^-10 ^3 ^6 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^ ^4 air unless block ^-7 ^ ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^ ^ air unless block ^-11 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^ ^-7 air unless block ^-11 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^ ^-11 air unless block ^-7 ^ ^-11 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ diamond_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_training ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_training ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_training ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_training ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 4
+
+# multiblock_dining: hhcchhoo
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-10 ^ ^-10 ^3 ^6 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^ ^4 air unless block ^-7 ^ ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^ ^ air unless block ^-11 ^ ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^ ^-7 air unless block ^-11 ^ ^-7 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^ ^-11 air unless block ^-7 ^ ^-11 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ diamond_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_dining ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_dining ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_dining ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_dining ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 4
+
+-- 2 floors
+# multiblock_courtyard: ooocccco cccooooc
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-10 ^ ^-10 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^ ^4 air unless block ^-7 ^ ^4 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^ ^ air unless block ^-11 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^ ^-7 air unless block ^-11 ^ ^-7 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^ ^-11 air unless block ^-7 ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^4 air unless block ^ ^7 ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^7 ^4 air unless block ^-7 ^7 ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^7 ^ air unless block ^-11 ^7 ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^7 ^-7 air unless block ^-11 ^7 ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^7 ^-11 air unless block ^-7 ^7 ^-11 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^-11 air unless block ^ ^7 ^-11 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^-7 air unless block ^4 ^7 ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^ air unless block ^4 ^7 ^ netherite_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_courtyard ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_courtyard ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_courtyard ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_courtyard ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 4
+
+# multiblock_grand_staircase: ochhcocc hoccochc
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-10 ^ ^-10 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^ ^4 air unless block ^-7 ^ ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^ ^ air unless block ^-11 ^ ^ gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^ ^-7 air unless block ^-11 ^ ^-7 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^ ^-11 air unless block ^-7 ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^4 air unless block ^ ^7 ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^7 ^4 air unless block ^-7 ^7 ^4 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^7 ^ air unless block ^-11 ^7 ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^7 ^-7 air unless block ^-11 ^7 ^-7 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^7 ^-11 air unless block ^-7 ^7 ^-11 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^-11 air unless block ^ ^7 ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^-7 air unless block ^4 ^7 ^-7 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^ air unless block ^4 ^7 ^ netherite_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_grand_staircase ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_grand_staircase ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_grand_staircase ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_grand_staircase ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 4
+
+# multiblock_dining_and_bedroom: cchhccoo hhchohcc
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-10 ^ ^-10 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^ ^4 air unless block ^-7 ^ ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^ ^ air unless block ^-11 ^ ^ gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^ ^-7 air unless block ^-11 ^ ^-7 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^ ^-11 air unless block ^-7 ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-11 air unless block ^ ^ ^-11 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^-7 air unless block ^4 ^ ^-7 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^4 air unless block ^ ^7 ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^7 ^4 air unless block ^-7 ^7 ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^7 ^ air unless block ^-11 ^7 ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-11 ^7 ^-7 air unless block ^-11 ^7 ^-7 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-7 ^7 ^-11 air unless block ^-7 ^7 ^-11 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^-11 air unless block ^ ^7 ^-11 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^-7 air unless block ^4 ^7 ^-7 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^ air unless block ^4 ^7 ^ netherite_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_dining_and_bedroom ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_dining_and_bedroom ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_dining_and_bedroom ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:multiblock_dining_and_bedroom ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 4
+
+
+# Staircases
+# staircase_bedroom: hchococh
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-4 air unless block ^ ^ ^-4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^4 air unless block ^ ^7 ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^7 ^ air unless block ^-4 ^7 ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^-4 air unless block ^ ^7 ^-4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^ air unless block ^4 ^7 ^ gold_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_bedroom ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_bedroom ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_bedroom ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_bedroom ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
+
+# staircase_piston: chcococh
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-4 air unless block ^ ^ ^-4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^4 air unless block ^ ^7 ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^7 ^ air unless block ^-4 ^7 ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^-4 air unless block ^ ^7 ^-4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^ air unless block ^4 ^7 ^ gold_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_piston ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_piston ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_piston ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_piston ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
+
+# staircase_slimejump: oooooooo
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-4 air unless block ^ ^ ^-4 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^4 air unless block ^ ^7 ^4 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^7 ^ air unless block ^-4 ^7 ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^-4 air unless block ^ ^7 ^-4 diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^ air unless block ^4 ^7 ^ diamond_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_slimejump ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_slimejump ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_slimejump ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_slimejump ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
+
+# staircase_overgrown: cccococc
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-4 air unless block ^ ^ ^-4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^4 air unless block ^ ^7 ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^7 ^ air unless block ^-4 ^7 ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^-4 air unless block ^ ^7 ^-4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^ air unless block ^4 ^7 ^ netherite_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_overgrown ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_overgrown ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_overgrown ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_overgrown ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
+
+# staircase_debris: hhhohohh
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-4 air unless block ^ ^ ^-4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^4 air unless block ^ ^7 ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^7 ^ air unless block ^-4 ^7 ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^-4 air unless block ^ ^7 ^-4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^ air unless block ^4 ^7 ^ gold_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_debris ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_debris ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_debris ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_debris ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
+
+# staircase_storage: hohococh
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-4 air unless block ^ ^ ^-4 gold_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^4 air unless block ^ ^7 ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^7 ^ air unless block ^-4 ^7 ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^-4 air unless block ^ ^7 ^-4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^ air unless block ^4 ^7 ^ gold_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_storage ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_storage ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_storage ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_storage ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
+
+# staircase_spiral: cccoccco
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-4 air unless block ^ ^ ^-4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^4 air unless block ^ ^7 ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^7 ^ air unless block ^-4 ^7 ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^-4 air unless block ^ ^7 ^-4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^ air unless block ^4 ^7 ^ diamond_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_spiral ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_spiral ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_spiral ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_spiral ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
+
+# staircase_shaft: cccoccco
+execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^-4 air unless block ^ ^ ^-4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^ ^ air unless block ^4 ^ ^ diamond_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^4 air unless block ^ ^7 ^4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^7 ^ air unless block ^-4 ^7 ^ netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^7 ^-4 air unless block ^ ^7 ^-4 netherite_block run tag @s add fail
+execute as @e[type=armor_stand,name=multiblock] at @s unless block ^4 ^7 ^ air unless block ^4 ^7 ^ diamond_block run tag @s add fail
+{if success New random position}
+-- conditional; Rotations (choose only 1 of the 4:)
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_shaft ~-3 ~ ~-3
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_shaft ~3 ~ ~-3 clockwise_90
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_shaft ~3 ~ ~3 180
+execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:staircase_shaft ~-3 ~ ~3 counterclockwise_90
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
+

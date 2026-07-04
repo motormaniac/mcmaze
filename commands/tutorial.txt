@@ -1,0 +1,21 @@
+# tutorial
+-- init
+scoreboard players reset @a tutorial 1
+
+-- Dialog 1
+execute positioned ~ ~2.5 ~ run tellraw @a[distance=..3,scores={tutorial=1}] {"text":"Welcome young warrior. The First Trial: Can you get out of this room?"}
+-- conditional
+execute positioned ~ ~3.5 ~ run scoreboard players set @a[distance=..3,scores={tutorial=1}] tutorial 2
+-- Dialog 2
+execute positioned ~ ~2.5 ~ run tellraw @a[distance=..3,scores={tutorial=2}] {"text":"Good job. Try out your new tools now."}
+-- conditional
+execute positioned ~ ~3.5 ~ run scoreboard players set @a[distance=..3,scores={tutorial=2}] tutorial 3
+-- Dialog 3
+execute positioned ~ ~2.5 ~ run tellraw @a[distance=..3,scores={tutorial=3}] {"text":"Now enter the portal to try out some tools!"}
+-- conditional
+execute positioned ~ ~3.5 ~ run scoreboard players set @a[distance=..3,scores={tutorial=3}] tutorial 4
+-- The fake portal uses negative indices
+-- Dialog 4
+execute positioned ~ ~2.5 ~ run tellraw @a[distance=..3,scores={tutorial=4}] {"text":"Some rooms have more than one way to trigger hidden entrances. Get creative."}
+-- conditional
+execute positioned ~ ~3.5 ~ run scoreboard players set @a[distance=..3,scores={tutorial=4}] tutorial 5

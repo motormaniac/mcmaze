@@ -1,0 +1,23 @@
+Quick Teleports:
+Commands|/tp @p -72 3 23
+MultiBlock Modules|/tp 130 17 -55
+Maze Lobby|/tp @p 19 7 -9
+Village|/tp @p 785 72 -16
+Fountain|/tp @s 686 -31 -540
+Tutorial|/tp 364 63 -631
+-- Maze|/tp @p -255 66 126
+-- Item Commands|/tp @p -74 25 30
+-- Big Maze|/tp @p -755 126 37
+||
+Maze Generation Commands:
+Summon origin|execute at @p run summon armor_stand ~ ~ ~ {CustomName:origin,NoGravity:1b,Marker:1b,Tags:["new"]}
+Start|/setblock -58 3 18 redstone_block
+Emergency Stop|/setblock -74 3 29 redstone_block
+Clear|/setblock -75 3 17 redstone_block
+||
+Debug Items:
+Aote|give @p carrot_on_a_stick[item_model=diamond_sword,item_name=Aote,custom_data={aote:1b}]
+Only use EITHER the axe or chestplate
+Kill Entities|/give @p carrot_on_a_stick[custom_data={killEntities:true},custom_name="killEntities",item_model=golden_sword] 1
+Reach Chestplate|/give @p chainmail_chestplate[attribute_modifiers=[{id:"entity_interaction_range",type:"entity_interaction_range",amount:20,operation:"add_value",slot:"armor"},{id:"block_interaction_range",type:"block_interaction_range",amount:20,operation:"add_value",slot:"armor"}]]
+Redstone Pants|/give @p leather_leggings[attribute_modifiers=[{id:"scale",type:"scale",amount:-0.6,operation:"add_multiplied_base"}],custom_name="Redstone Pants"] 1
