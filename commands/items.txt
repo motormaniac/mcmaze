@@ -256,25 +256,21 @@ tag @a[tag=warp] remove warp
 
 # Poultry Power (Cluck, Chicken)
 -- Half way into the game, a random seeker gets the poultry power item. The poultry power item clucks the closest hider (at an infinite range), forcing the hider to make chicken noises while moving. The hider must kill a glowing chicken that spawns in the map.
-execute if score .global time matches 100 run give @r[team=seeker] carrot_on_a_stick[custom_data={poultryPower:1b},item_model="chicken",enchantment_glint_override=1b,!max_damage,max_stack_size=64,item_name={"bold":true,"color":"yellow","text":"Poultry Power"},lore=[{"bold":true,"color":"dark_purple","text":"BAGAWK!!!"},{"bold":false,"color":"gray","italic":false,"text":"Cluck the closest player on the other team"}]] 1
+run give @r[team=seeker] carrot_on_a_stick[custom_data={poultryPower:1b},item_model="chicken",enchantment_glint_override=1b,max_stack_size=64,item_name={"bold":true,"color":"yellow","text":"Poultry Power"},lore=[{"bold":true,"color":"dark_purple","text":"BAGAWK!!!"},{"bold":false,"color":"gray","italic":false,"text":"Cluck the closest player on the other team"}]] 1
 
 -- summon chicken command
-summon chicken ~ ~1 ~ {CustomName:{color:yellow,bold:1b,text:"Cluck Chicken"},Tags:["poultry","new"],Glowing:1b,DeathLootTable:empty,attributes:[{id:"minecraft:max_health",base:5}],active_effects:[{id:"minecraft:speed",amplifier:10,duration:-1,show_particles:1b}]}
+execute if score .poultryPowerEnabled settings matches 1 if score .global time matches 6000 at @e[type=armor_stand,sort=random,limit=1] run summon chicken ~ ~1 ~ {CustomName:{color:yellow,bold:1b,text:"Cluck Chicken"},Tags:["poultry","new"],Glowing:1b,DeathLootTable:empty,attributes:[{id:"minecraft:max_health",base:5}],active_effects:[{id:"minecraft:speed",amplifier:10,duration:-1,show_particles:1b}]}
 
 ## loot chicken
--- Summon loot chicken when a clucked player exists
-execute unless entity @e[type=chicken,tag=poultry] if entity @a[tag=cluck] at @e[tag=lootReady,sort=random,limit=1] run summon chicken ~ ~ ~ {CustomName:{color:yellow,bold:1b,text:"Cluck Chicken"},Tags:["poultry","new"],Glowing:1b,DeathLootTable:empty,attributes:[{id:"minecraft:max_health",base:5}],active_effects:[{id:"minecraft:speed",amplifier:10,duration:-1,show_particles:1b}]}
 -- do not identify the chicken by its name; use tag poultry instead
 execute as @e[type=chicken,tag=poultry,tag=new] at @s run summon armor_stand ~ ~ ~ {CustomName:poultry,NoGravity:true,Marker:true,Small:true,Invisible:true}
 tag @e[type=chicken,tag=poultry,tag=new] remove new
 -- Increase this distance if the teleport is not fast enough
-execute as @e[type=chicken,tag=poultry] at @s run tp @n[type=armor_stand,name=poultry,distance=..1] ~ ~ ~
+execute as @e[type=chicken,tag=poultry] at @s run tp @n[type=armor_stand,name=poultry,distance=..3] ~ ~ ~
 -- detect chicken death
-execute as @e[type=armor_stand,name=poultry] at @s unless entity @n[type=chicken,tag=poultry,distance=..0] run tag @s add death
+execute as @e[type=armor_stand,name=poultry] at @s unless entity @n[type=chicken,tag=poultry,distance=..0.1] run tag @s add death
 execute at @e[type=armor_stand,name=poultry,tag=death] run summon firework_rocket ~ ~ ~ {LifeTime:26,FireworksItem:{id:"minecraft:firework_rocket",components:{"minecraft:fireworks":{explosions:[{shape:"large_ball",has_twinkle:1b,has_trail:1b,colors:[I;16711680,255,65280],fade_colors:[I;16701501]}]}}}}
-execute if entity @e[type=armor_stand,name=poultry,tag=death] run tag @a[tag=cluck] add removeCluck
--- conditional
-execute as @a[tag=removeCluck] run tellraw @a [{color:yellow,selector:"@s"}, {text:" stopped clucking."}]
+execute at @e[type=armor_stand,name=poultry,tag=death] run summon item ~ ~ ~ {Item:{id:"minecraft:carrot_on_a_stick",count:1,components:{"minecraft:custom_data":{poultryPower:1b},"minecraft:item_model":"chicken","minecraft:enchantment_glint_override":true,"minecraft:max_stack_size":64,"minecraft:item_name":{"bold":true,"color":"yellow","text":"Poultry Power"},"minecraft:lore":[{"bold":true,"color":"dark_purple","text":"BAGAWK!!!"},{"bold":false,"color":"gray","italic":false,"text":"Cluck the closest player on the other team"}]}}}
 execute as @e[type=armor_stand,name=poultry,tag=death] at @s run tp @s ~ -130 ~
 
 
@@ -283,18 +279,24 @@ execute as @a[tag=!stun,scores={rightClick=1..}] if items entity @s weapon.mainh
 -- This code has the ability to be universally used by both teams, even if some game modes restrict usage to one team.
 -- Hider specific code
 execute as @a[team=hider,tag=poultryPower] unless entity @a[team=seeker] run tag @s add fail
-execute as @a[team=hider,tag=poultryPower] at @s run tag @n[team=seeker] add addCluck
+execute as @a[team=hider,tag=poultryPower] at @s run tag @p[team=seeker,tag=!cluck] add addCluck
 tellraw @a[team=hider,tag=poultryPower,tag=fail] {color:red,text:"No seekers exist. Could not use poultry power."}
 ------------------
 -- Seeker specific code
 execute as @a[team=seeker,tag=poultryPower] unless entity @a[team=hider] run tag @s add fail
-execute as @a[team=seeker,tag=poultryPower] at @s run tag @n[team=hider] add addCluck
+execute as @a[team=seeker,tag=poultryPower] at @s run tag @p[team=hider,tag=!cluck] add addCluck
 tellraw @a[team=seeker,tag=poultryPower,tag=fail] {color:red,text:"No hiders exist. Could not use poultry power."}
 -----------------
 execute as @a[tag=poultryPower,tag=fail] at @s run playsound minecraft:block.anvil.land master @s ~ ~ ~ 0.5
 execute as @a at @a[tag=poultryPower,tag=!fail] run playsound minecraft:entity.chicken.hurt
 clear @a[tag=poultryPower,tag=!fail] carrot_on_a_stick[custom_data={poultryPower:1b}] 1
-execute if entity @a[tag=poultryPower,tag=!fail] as @a[tag=addCluck] run tellraw @a [{color:yellow,selector:"@s"}, {text:" was clucked. Kill the chicken to stop their clucking."}]
+execute if entity @p[tag=poultryPower,tag=!fail] as @a[tag=addCluck] run tellraw @a [{color:yellow,selector:"@s"}, {text:" was clucked. Kill the chicken to stop their clucking."}]
+-- remove cluck of those who were already clucked
+execute if entity @p[tag=poultryPower,tag=!fail] run tag @a[tag=cluck,tag=!addCluck] add removeCluck
+-- conditional
+execute as @a[tag=removeCluck] run tellraw @a [{color:yellow,selector:"@s"}, {text:" stopped clucking."}]
+-- spawn another chicken
+execute if entity @p[tag=poultryPower,tag=!fail] unless entity @e[type=chicken,tag=poultry] at @e[tag=lootReady,sort=random,limit=1] run summon chicken ~ ~1 ~ {CustomName:{color:yellow,bold:1b,text:"Cluck Chicken"},Tags:["poultry","new"],Glowing:1b,DeathLootTable:empty,attributes:[{id:"minecraft:max_health",base:5}],active_effects:[{id:"minecraft:speed",amplifier:10,duration:-1,show_particles:1b}]}
 tag @a[tag=poultryPower,tag=fail] remove fail
 tag @a[tag=poultryPower] remove poultryPower
 
@@ -364,12 +366,11 @@ tag @a[tag=freeze] remove freeze
 
 -- assume that all tag=lootReady armor stands are also tag=loot
 ## Item reset
-kill @e[type=item,tag=pickup]
-scoreboard players reset @e[type=armor_stand,tag=lootReady] rng
-scoreboard players reset @e[type=armor_stand,tag=lootReady] loot
-kill @e[type=armor_stand,tag=mine]
-
-{start next}
+execute if score .itemsEnabled settings matches 1 run kill @e[type=item,tag=pickup]
+execute if score .itemsEnabled settings matches 1 run scoreboard players reset @e[type=armor_stand,tag=lootReady] rng
+execute if score .itemsEnabled settings matches 1 run scoreboard players reset @e[type=armor_stand,tag=lootReady] loot
+execute if score .itemsEnabled settings matches 1 run kill @e[type=armor_stand,tag=mine]
+execute if score .itemsEnabled settings matches 1 run {start next}
 
 ## slowly spawn items as time goes on:
 -- Every tick:
@@ -426,31 +427,93 @@ execute unless entity @e[scores={loot=1..}] run {stop loop}
 
 
 # Flag Capture
+
+## Summon Flag Commands
+-- summon the flag at a random armor stand named flagSpawn
+execute at @e[type=armor_stand,name=flagSpawn,sort=random,limit=1] run summon armor_stand ~ ~ ~ {CustomName:flag,CustomNameVisible:0b,Invisible:1b,NoGravity:1b,Marker:1b,equipment:{head:{id:"minecraft:white_banner",count:1}},active_effects:[{id:"minecraft:glowing",amplifier:1,duration:200,show_particles:0b}]}
+-- summon neutral flag (with glowing)
+summon armor_stand ~ ~ ~ {CustomName:flag,CustomNameVisible:0b,Invisible:1b,NoGravity:1b,Marker:1b,equipment:{head:{id:"minecraft:white_banner",count:1}},active_effects:[{id:"minecraft:glowing",amplifier:1,duration:200,show_particles:0b}]}
+-- red captured flag
 summon armor_stand ~ ~ ~ {CustomName:flag,CustomNameVisible:0b,Invisible:1b,NoGravity:1b,Marker:1b,Team:seeker,equipment:{head:{id:"minecraft:red_banner",count:1}}}
+-- blue captured flag
+summon armor_stand ~ ~ ~ {CustomName:flag,CustomNameVisible:0b,Invisible:1b,NoGravity:1b,Marker:1b,Team:hider,equipment:{head:{id:"minecraft:blue_banner",count:1}}}
+
+## Summon Capture Zone Commands
+-- summon armor stand
+execute align xz run summon armor_stand ~0.5 ~ ~0.5 {CustomName:capture,Marker:1b,Invisible:1b,NoGravity:1b,Rotation:[90,0]}
+-- rotate
+execute as @n[type=armor_stand,name=capture] at @s rotated as @p run rotate @s ~ ~
+
+## Flag Pickup
+-- neutral flag pickup
+execute as @e[type=armor_stand,name=flag,team=!hider,team=!seeker] at @s run tag @p[distance=..2,tag=!carry] add addCarry
+------------------------
+-- players that are not in the capture zone have a capture value of -1
+execute as @a[team=hider] at @s unless entity @e[type=armor_stand,name=flag,team=seeker,distance=..2] run scoreboard players set @s flagCapture -1
+execute as @a[team=seeker] at @s unless entity @e[type=armor_stand,name=flag,team=hider,distance=..2] run scoreboard players set @s flagCapture -1
+-- set capture time to 10 seconds
+execute as @e[type=armor_stand,name=flag,team=seeker] at @s run scoreboard players set @a[team=!spectator,distance=..2,scores={flagCapture=-1},tag=!carry,team=hider] flagCapture 200
+execute as @e[type=armor_stand,name=flag,team=hider] at @s run scoreboard players set @a[team=!spectator,distance=..2,scores={flagCapture=-1},tag=!carry,team=seeker] flagCapture 200
+scoreboard players remove @a[team=!spectator,scores={flagCapture=1..}] flagCapture 1
+-- if the flag and player are within two blocks of each other, add "addCarry" tag
+execute as @e[type=armor_stand,name=flag] at @s run tag @p[distance=..2,team=!spectator,tag=!carry,scores={flagCapture=0}] add addCarry
+-------------------------
+execute as @a[tag=addCarry] at @s run tag @n[type=armor_stand,name=flag] add remove
+execute if entity @e[type=armor_stand,name=flag,tag=remove,team=hider] run scoreboard players remove @a[limit=1,team=hider] score 1
+execute if entity @e[type=armor_stand,name=flag,tag=remove,team=seeker] run scoreboard players remove @a[limit=1,team=seeker] score 1
+execute as @e[type=armor_stand,name=flag,tag=remove,team=hider] run tellraw @a [{color:aqua,text:"Blue Team"},{color:yellow,text:" lost a flag"}]
+execute as @e[type=armor_stand,name=flag,tag=remove,team=seeker] run tellraw @a [{color:red,text:"Red Team"},{color:yellow,text:" lost a flag"}]
+execute as @e[type=armor_stand,name=flag,tag=remove] at @s run tag @n[name=capture,distance=..0.1] remove capture
+-- kill flag after it is picked up
+execute as @e[type=armor_stand,name=flag,tag=remove] at @s run tp @s ~ -130 ~
 
 ## Add carry
--- if the flag and player are within two blocks of each other, add "addCarry" tag
-execute as @e[type=armor_stand,name=flag] at @s run tag @p[distance=..2,team=!spectator,tag=!carry] add addCarry
--- kill flag after it is picked up
-execute as @a[tag=addCarry] at @s as @n[type=armor_stand,name=flag,distance=..2] at @s run tp @s ~ -130 ~
 -- TODO: make banner unremovable
-item replace entity @a[tag=addCarry,team=seeker] armor.head with red_banner
-item replace entity @a[tag=addCarry,team=hider] armor.head with blue_banner
-execute as @a[tag=addCarry] run tellraw @a [{color:white,selector:"@s"}, {text:" captured a flag"}]
+item replace entity @a[tag=addCarry,team=seeker] armor.head with red_banner[enchantments={"binding_curse":1}]
+item replace entity @a[tag=addCarry,team=hider] armor.head with blue_banner[enchantments={"binding_curse":1}]
+-- set flag cooldown to 3 seconds
+scoreboard players set @a[tag=addCarry] flagCooldown 60
+execute as @a[tag=addCarry,team=hider] run tellraw @a [{color:aqua,selector:"@s"}, {color:yellow,text:" obtained a flag"}]
+execute as @a[tag=addCarry,team=seeker] run tellraw @a [{color:red,selector:"@s"}, {color:yellow,text:" obtained a flag"}]
 tag @a[tag=addCarry] add carry
 tag @a[tag=addCarry] remove addCarry
-
-execute as @e[type=mannequin,tag=freeze,nbt={last_hurt_by_player_memory_time:100}] at @s on attacker if entity @s[team=hider] run tag @n[type=mannequin,distance=..0] add removeFreeze
-execute as @a[tag=carry,nbt={last_hurt_by_player_memory_time:100}] on attacker 
 
 ## Remove carry
 item replace entity @a[tag=removeCarry] armor.head with air
 tag @a[tag=removeCarry] remove carry
 tag @a[tag=removeCarry] remove removeCarry
 
+## swapping logic
+scoreboard players remove @a[tag=carry,scores={flagCooldown=1..}] flagCooldown 1
+execute as @a[tag=carry,team=hider,nbt={last_hurt_by_player_memory_time:100},scores={flagCooldown=..0}] on attacker if entity @s[team=seeker] run tag @s add addCarry
+execute as @a[tag=carry,team=hider,nbt={last_hurt_by_player_memory_time:100},scores={flagCooldown=1..}] on attacker at @s if entity @s[team=seeker] run playsound minecraft:block.anvil.land master @s ~ ~ ~ 0.5
+-- "on attacker" doesn't change the position, so @p still refers to the original player
+execute as @a[tag=carry,team=hider,nbt={last_hurt_by_player_memory_time:100},scores={flagCooldown=..0}] at @s on attacker if entity @s[team=seeker] run tag @p add removeCarry
+-------------------------------
+execute as @a[tag=carry,team=seeker,nbt={last_hurt_by_player_memory_time:100},scores={flagCooldown=..0}] on attacker if entity @s[team=hider] run tag @s add addCarry
+execute as @a[tag=carry,team=seeker,nbt={last_hurt_by_player_memory_time:100},scores={flagCooldown=1..}] on attacker at @s if entity @s[team=hider] run playsound minecraft:block.anvil.land master @s ~ ~ ~ 0.5
+-- "on attacker" doesn't change the position, so @p still refers to the original player
+execute as @a[tag=carry,team=seeker,nbt={last_hurt_by_player_memory_time:100},scores={flagCooldown=..0}] at @s on attacker if entity @s[team=hider] run tag @p add removeCarry
+
+## Capture Zones
+execute as @e[type=armor_stand,name=capture,tag=!capture,team=hider] at @s if entity @p[team=hider,tag=carry,distance=..2] run tag @s add addCapture
+execute as @e[type=armor_stand,name=capture,tag=!capture,team=seeker] at @s if entity @p[team=seeker,tag=carry,distance=..2] run tag @s add addCapture
+-- summon red flag
+execute as @e[type=armor_stand,name=capture,team=seeker,tag=addCapture] at @s run summon armor_stand ~ ~ ~ {CustomName:flag,CustomNameVisible:0b,Invisible:1b,NoGravity:1b,Marker:1b,Team:seeker,equipment:{head:{id:"minecraft:red_banner",count:1}}}
+-- summon blue flag
+execute as @e[type=armor_stand,name=capture,team=hider,tag=addCapture] at @s run summon armor_stand ~ ~ ~ {CustomName:flag,CustomNameVisible:0b,Invisible:1b,NoGravity:1b,Marker:1b,Team:hider,equipment:{head:{id:"minecraft:blue_banner",count:1}}}
+execute as @e[type=armor_stand,name=capture,tag=addCapture] at @s run rotate @n[name=flag,distance=..0.1] ~ ~
+execute as @e[type=armor_stand,name=capture,tag=addCapture] at @s run tag @p[distance=..2] add removeCarry
+execute as @e[type=armor_stand,name=capture,tag=addCapture] at @s as @p[distance=..2,tag=removeCarry,team=hider] run tellraw @a [{color:aqua,selector:"@s"},{color:yellow,text:" captured a flag"}]
+execute as @e[type=armor_stand,name=capture,tag=addCapture] at @s as @p[distance=..2,tag=removeCarry,team=seeker] run tellraw @a [{color:red,selector:"@s"},{color:yellow,text:" captured a flag"}]
+execute if entity @e[type=armor_stand,name=capture,tag=addCapture,team=hider] run scoreboard players add @a[team=hider,limit=1] score 1
+execute if entity @e[type=armor_stand,name=capture,tag=addCapture,team=seeker] run scoreboard players add @a[team=seeker,limit=1] score 1
+tag @e[tag=addCapture] add capture
+tag @e[tag=addCapture] remove addCapture
+
+
 -- weightless feather
 give @a feather[attribute_modifiers=[{id:"gravity",type:"gravity",amount:-2,operation:"add_multiplied_base"}],item_name={"shadow_color":-171,"text":"Weightless Feather"}] 1
-
 
 -- Lump of coal
 item replace entity @r armor.feet with coal[attribute_modifiers=[{id:"gravity",type:"gravity",amount:100,operation:"add_multiplied_base",slot:"feet"}],custom_name="Lump of Coal",equippable={slot:"feet"}] 1

@@ -1,15 +1,12 @@
 # Settings
-- Permanent blindness (T/F, default F)
-- Obscure hider name tags (T/F default T)
-- Obscure seeker name tags (T/F default F)
-- hider speed (T/F default F)
-- seeker speed (T/F default F)
-- Panel for enabling/disabling specific items
-- Time limit
-- Items enabled (T/F default T)
-- Loot speed: how fast loot spawns
-- Start with Item (Players get a random item when game starts)
-- Enable portals (T/F default T)
+- Seeker Speed (T/F default F) .seekerSpeed
+- Hider Speed (T/F default F) .hiderSpeed
+- Obscure hider name tags (T/F default T) .obscureHiderNames
+- Obscure seeker name tags (T/F default F) .obscureSeekerNames
+- Items Enabled (T/F default T) .itemsEnabled
+- Time limit (T/F default T) .timeLimit
+- Enable portals (T/F default T) .portalsEnabled
+  - (requires timer on)
 
 ## Tutorial changes
 Make pre tutorial room
@@ -17,14 +14,14 @@ Tell players to turn sounds on
 Explicitely tell players to remove
 
 ## Change Notes
-Adnan needs to connect the gold block in the office redstone
+Change tp locations for maze lobby
+When starting mouse mode, make at least one person not spectator
+Allow 0% multiblock fill
+Add multiblock time limit
 Change Chicken to Settlers of Catan Robber
 Put a floating bow item display in the bow room
 If no portals spawn in the maze, the process fails
-Change the chicken design
-Track maze state with scoreboard
 Fix all item lores and make sure in game commands match these lores
-Murray was getting the diamond sword by flicking the trapdoor
 Reset spawnprot
 
 Gamemodes
@@ -72,14 +69,17 @@ Start button can be reclicked
 -- Summon spawn armor stand (ready)
 /execute as @s at @s align xyz run summon armor_stand ~0.5 ~0.5 ~0.5 {CustomName:spawn,Small:1b,NoGravity:1b,Invisible:1b,Marker:1b,Tags:["spawnReady"]}
 
+
 # Start Button
 -- check for at least 1 seeker and 1 hider
-execute if score .global gameMode matches 1..2 run 
-execute if score
-execute unless entity @p[team=seeker] run tellraw @a {color:yellow,text:"At least one Seeker is required"}
-execute unless entity @p[team=hider] run tellraw @a {color:yellow,text:"At least one Hider is required"}
+-- if in freeze tag mode, make sure there's at least one seeker and one hider
+execute unless score @n[type=armor_stand,name=origin] mazeState matches 2 run tellraw @a {color:red,text:"Please generate the maze first before starting the game."}
+execute if score .global gameMode matches 1 unless entity @p[team=seeker] run tellraw @a {color:red,text:"At least one Seeker is required"}
+execute if score .global gameMode matches 1 unless entity @p[team=hider] run tellraw @a {color:red,text:"At least one Hider is required"}
 scoreboard players set .global time 100
-execute if entity @p[team=seeker] if entity @p[team=hider] if entity @e[type=armor_stand,name=corner] unless entity @e[type=armor_stand,name=path] unless entity @e[type=armor_stand,name=multiblock] run {Countdown Loop}
+execute if score .global gameMode matches 1 if entity @p[team=seeker] if entity @p[team=hider] if score @n[type=armor_stand,name=origin] mazeState matches 2 run {start countdown}
+-- in mouse game mode, no need to check for teams
+execute if score .global gameMode matches 2..3 if score @n[type=armor_stand,name=origin] mazeState matches 2 run {start countdown}
 
 # Countdown Loop
 -- to cancel the countdown, remove the redstone block to stop the loop
@@ -90,8 +90,15 @@ execute if score .global time matches 20 run tellraw @a {color:yellow,text:"Game
 -- conditional (repeat for all of 5, 3, 2, 1...)
 execute as @a at @s run playsound minecraft:block.lever.click
 scoreboard players remove .global time 1
-execute if score .global time matches ..0 run {stop loop}
--- conditional
+-- check for seeker and hider during freeze tag
+execute if score .global gameMode matches 1 if score .global time matches ..0 if entity @p[team=seeker] if entity @p[team=hider] run {next}
+-- start next during mouse
+execute if score .global gameMode matches 2..4 if score .global time matches ..0 run {next}
+
+-- CHANGED
+
+## next
+{stop loop}
 {forceload add chunks}
 {start forceload listener}
 
@@ -109,7 +116,8 @@ gamemode adventure @a[team=!spectator]
 clear @a
 effect clear @a
 time set midnight
-team modify hider nametagVisibility hideForOtherTeams
+execute if score .obscureHiderNames settings matches 1 run team modify hider nametagVisibility hideForOtherTeams
+execute if score .obscureSeekerNames settings matches 1 run team modify seeker nametagVisibility hideForOtherTeams
 tellraw @a {color:yellow, text:"Starting Game"}
 tellraw @a {color:white, text:"Write '/trigger end' at any point to stop the game early."}
 {Start Spawning Items}
@@ -117,7 +125,8 @@ tag @a[team=!spectator] add firework
 {Init Trigger End}
 {Init IDs}
 execute if score .global gameMode matches 1 run {Start Freeze Tag}
-execute if score .global gameMode matches 2 run {Start Mouse}
+execute if score .global gameMode matches 2..3 run {Start Mouse}
+execute if score .global gameMode matches 4 run {Start CTF}
 
 ## Assign Player IDS
 scoreboard players set .global id 1
@@ -132,24 +141,34 @@ execute unless entity @p[scores={id=0}] run scoreboard players reset .global id
 -- Start timer is not connected to Assign IDs
 ## Start timer
 -- 10 minutes
+execute if score .timeLimit settings matches 1
+-- conditional
 scoreboard players set .global time 12000
+-- conditional
 execute store result bossbar minecraft:time max run scoreboard players get .global time
-bossbar set minecraft:time players @a
+-- conditional
 bossbar set minecraft:time visible true
+-- conditional
 {Start Loop}
+-- conditional
+bossbar set minecraft:time players @a
 
 -- loop:
 scoreboard players remove .global time 1
 execute store result bossbar minecraft:time value run scoreboard players get .global time
-execute if score .global time matches ..0 run {stop loop}
--- conditional
-title @a title {color:gray,text:"Draw"}
--- conditional
-tellraw @a {color:gray, text:"The game was a Draw"}
+execute if score .global time matches ..0 as @a at @s run {stop loop}
 -- conditional
 execute as @a at @s run playsound minecraft:entity.lightning_bolt.thunder
 -- conditional
 {Trigger Game End}
+execute if score .global gameMode matches 1 if score .global time matches ..0 run title @a title {color:aqua,text:"Hiders Win"}
+-- conditional
+tellraw @a {color:aqua, text:"Hiders won the game"}
+execute if score .global gameMode matches 2..4 if score .global time matches ..0 run title @a title {color:gray,text:"Draw"}
+-- conditional
+tellraw @a {color:gray, text:"The game was a Draw"}
+-- spawn chicken halfway through the game
+execute if score .global time matches 6000 at @e[type=armor_stand,sort=random,limit=1] run summon chicken ~ ~1 ~ {CustomName:{color:yellow,bold:1b,text:"Cluck Chicken"},Tags:["poultry","new"],Glowing:1b,DeathLootTable:empty,attributes:[{id:"minecraft:max_health",base:5}],active_effects:[{id:"minecraft:speed",amplifier:10,duration:-1,show_particles:1b}]}
 
 -- time left notifications
 execute if score .global time matches 6000 run tellraw @a {color:"red",text:"5 minutes left"}
@@ -175,6 +194,10 @@ title @a title {color:gray,text:"Draw"}
 tellraw @a {color:gray, text:"The game was a Draw"}
 -- conditional
 execute as @a at @s run playsound minecraft:entity.lightning_bolt.thunder
+
+## Passive Effects
+execute if score .seekerSpeed settings matches 1 run effect give @a[team=seeker] speed 1 0 true
+execute if score .hiderSpeed settings matches 1 run effect give @a[team=hider] speed 1 0 true
 
 ======================================
 
@@ -270,9 +293,10 @@ tp @a @n[type=armor_stand,name=spawn,tag=spawnReady]
 execute at @n[type=armor_stand,name=spawn,tag=spawnReady] run spawnpoint @a ~ ~ ~
 scoreboard players reset @a score
 scoreboard objectives setdisplay sidebar score
-{Start all Mouse Loops}
+execute if score .global gameMode matches 3 run {Start Cheese Loops}
+execute if score .global gameMode matches 4 run {Start Time Loops}
 
-## Detect Mouse Win
+## Detect Mouse Cheese Win
 execute as @p[scores={score=20..}] run title @a title [{color:yellow,selector:"@s"},{text:" wins!"}]
 -- conditional
 execute as @p[scores={score=20..}] run tellraw @a [{color:yellow,selector:"@s"},{text:" wins!"}]
@@ -339,6 +363,46 @@ scoreboard players remove @e[type=armor_stand,tag=lootReady,scores={cheeseRng=0.
 execute as @a run attribute @s minecraft:scale base reset
 execute as @a run attribute @s movement_speed modifier remove mouse
 
+## Mouse Time
+scoreboard players add @a[team=hider] score 1
+execute as @a[scores={score=3600..}] run title @a title [{selector:"@s"}, {text:" wins"}]
+-- conditional
+{stop this loop}
+-- conditional
+{stop game}
+
+====================================
+
+# CTF
+## Start CTF
+-- tag the 2 closest spawn armor stands as spawn ready
+execute as @e[type=armor_stand,name=center] at @s run tag @e[type=armor_stand,name=spawn,sort=nearest,limit=2] add spawnReady
+execute as @e[type=armor_stand,name=center] at @s run tag @e[type=armor_stand,name=flagSpawn,distance=..100] add flagSpawnReady
+tp @a[team=seeker] @n[type=armor_stand,name=spawn,tag=spawnReady,team=seeker]
+tp @a[team=hider] @n[type=armor_stand,name=spawn,tag=spawnReady,team=hider]
+execute at @n[type=armor_stand,name=spawn,tag=spawnReady,team=hider] run spawnpoint @a[team=hider] ~ ~ ~
+execute at @n[type=armor_stand,name=spawn,tag=spawnReady,team=seeker] run spawnpoint @a[team=seeker] ~ ~ ~
+scoreboard players reset * score
+scoreboard objectives setdisplay sidebar score
+{start timer}
+{Start all CTF Loops}
+
+## Spawn flags over time
+-- attempt to spawn a flag every minute if no neutral flag exists
+scoreboard players operation .var1 time = .global time
+scoreboard players set .const time 1200
+scoreboard players operation .var1 time %= .const time
+-- every 1 minute, spawn neutral flag at random flag spawn position if not flag exists. Flag has glowing for 10 seconds
+execute if score .var1 time matches 0 unless entity @e[type=armor_stand,name=flag,team=!hider,team=!seeker] at @e[type=armor_stand,name=flagSpawn,tag=flagSpawnReady,sort=random,limit=1] run summon armor_stand ~ ~ ~ {CustomName:flag,CustomNameVisible:0b,Invisible:1b,NoGravity:1b,Marker:1b,equipment:{head:{id:"minecraft:white_banner",count:1}},active_effects:[{id:"minecraft:glowing",amplifier:1,duration:200,show_particles:0b}]}
+
+## Detect Win
+execute if entity @p[scores={score=2}] run {Stop Loop}
+-- conditional
+{Stop Game}
+-- conditional
+playsound minecraft:entity.lightning_bolt.thunder
+execute if entity @p[team=seeker,scores={score=2}] run tellraw @a {color:red,text:"Red Team Wins"}
+execute if entity @p[team=hider,scores={score=2}] run tellraw @a {color:aqua,text:"Blue Team Wins"}
 
 ====================================
 
@@ -351,10 +415,12 @@ effect clear @a
 tag @a[tag=cluck] add removeCluck
 tag @a remove firework
 scoreboard players set .global time 100
-team modify hider nametagVisibility never
+team modify seeker nametagVisibility always
+team modify hider nametagVisibility always
 tellraw @a {color:yellow,text:"Teleporting back to lobby in 5 seconds"}
 execute if score .global gameMode matches 1 run {Stop Freeze Tag}
-execute if score .global gameMode matches 2 run {Stop Mouse}
+execute if score .global gameMode matches 2..3 run {Stop Mouse}
+execute if score .global gameMode matches 4 run {Stop CTF}
 {start loop}
 
 -- loop:
@@ -394,12 +460,18 @@ tag @a[tag=wait] add removeWait
 -- kill all cheese
 execute as @e[type=armor_stand,name=cheese] at @s run tp @s ~ -130 ~
 kill @e[type=armor_stand,name=cheese]
--- hide scoreboard
 {Reset attributes}
 {Stop all Cheese loops}
 
-
 =================================
+
+# Stop CTF
+kill @e[type=armor_stand,name=flag]
+tag @a[tag=carry] add removeCarry
+tag @e[type=armor_stand,name=capture] remove capture
+{Stop All CTF Loops}
+
+===============================
 
 # Map Menu
 /summon item_frame ~ ~ ~ {Fixed:1b,Item:{id:"minecraft:filled_map",count:1,components:{"minecraft:map_id":11}}}
@@ -409,7 +481,7 @@ kill @e[type=armor_stand,name=cheese]
 -- Place console armor stand at console location
 execute align xyz run summon armor_stand ~0.5 ~ ~0.5 {CustomName:console,Invisible:1b,Marker:1b,NoGravity:1b}
 
-# Settings
+# Maze Bounds Settings
 -- Set default settings
 scoreboard players set .temp x 9
 scoreboard players set .temp z 9
@@ -441,3 +513,7 @@ execute if score .temp multiblockPercentage matches 10..49 run scoreboard player
 data merge block ~3 ~-1 ~ {front_text:{messages:["percentage:",{"score":{"name":".temp","objective":"multiblockPercentage"}},"",""]}}
 execute if score .temp multiblockPercentage matches 11..50 run scoreboard players remove .temp multiblockPercentage 5
 data merge block ~3 ~1 ~ {front_text:{messages:["percentage:",{"score":{"name":".temp","objective":"multiblockPercentage"}},"",""]}}
+
+# Item Settings
+-- 
+{clone barrel}

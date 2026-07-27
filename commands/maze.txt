@@ -12,6 +12,7 @@ global scoreboard name: .global
 - level (y axis) = what level of the maze. 1st floor is level = 1. On .global, it's the total maze height
 - multiblockPercentage = .global setting: what percentage of the map to fill with multiblocks
 - multiblockFill = used by "multiblock" to calculate what percentage of the map to fill with multiblocks
+- multiblockMax = used by "multiblock" to set a max number of attempts per level
 - attempts = used by "multiblock" to count how many times it has tried to place a multiblock. After a certain #of attempts, it chooses a new random position.
 - mazeProgress = used for maze progress bar
 - mazeState = tracks what state the maze is in (0=empty,1=building,2=built,3=clearing)
@@ -23,10 +24,15 @@ global scoreboard name: .global
 - tutorial = each step in the tutorial is represented by a number
 - gameMode = which game to play ex: freezetag or cat & mouse
   - 1 = freezetag
-  - 2 = mouse
+  - 2 = mouse (cheese)
+  - 3 = mouse (timer)
+  - 4 = CTF
 - cheeseRng = rng scoreboard for spawning cheese (spawning loot items already takes rng)
 - tickRate = 5 tick rate modes: 20 (1x), 100 (5x), 200 (10x), 400 (20x), 1000 (50x)
   - set default value 20
+- flagCooldown = time scoreboard. When player steals a flag, the flag can't be stolen again for some time.
+- flagCapture = time scoreboard. A player must sit on a flag's location for some time.
+- settings = example: scoreboard players set .hiderNameOn settings 1 (true)
 Triggers:
 - book = debug: gives the target player a command book
 - end = when all players trigger end, the game forces a draw and exits early.
@@ -35,6 +41,66 @@ Triggers:
 bossbars: time, maze_progress
 
 -- Teams:
+hider (color aqua)
+- Disable seeFriendlyInvisibles
+seeker (color red)
+- Disable seeFriendlyInvisibles
+spectator (color gray)
+freeze (color dark blue) - set collision rule to never
+cheese (color gold)
+
+=======================
+
+# Init world
+-- Create dummy scoreboards
+scoreboard objectives add closedCount dummy
+scoreboard objectives add rng dummy
+scoreboard objectives add id dummy
+scoreboard objectives add time dummy
+scoreboard objectives add x dummy
+scoreboard objectives add y dummy
+scoreboard objectives add level dummy
+scoreboard objectives add multiblockPercentage dummy
+scoreboard objectives add multiblockFill dummy
+scoreboard objectives add attempts dummy
+scoreboard objectives add mazeProgress dummy
+scoreboard objectives add mazeState dummy
+scoreboard objectives add loot dummy
+scoreboard objectives add portalID dummy
+scoreboard objectives add targetID dummy
+scoreboard objectives add portalTime dummy
+scoreboard objectives add blindCount dummy
+scoreboard objectives add tutorial dummy
+scoreboard objectives add gameMode dummy
+scoreboard objectives add cheeseRng dummy
+scoreboard objectives add tickRate dummy
+scoreboard objectives add flagCooldown dummy
+scoreboard objectives add flagCapture dummy
+scoreboard objectives add settings dummy
+-- Trigger scoreboards
+-- scoreboard objectives add book trigger
+scoreboard objectives add end trigger
+scoreboard objectives add rightClick minecraft.used:minecraft.carrot_on_a_stick
+scoreboard objectives add placeMine minecraft.used:minecraft.panda_spawn_egg
+-- bossbars
+bossbar add time Time
+bossbar set minecraft:time color blue
+bossbar add maze_progress "Maze Progress"
+bossbar set minecraft:maze_progress color yellow
+-- teams
+team add hider Hider
+team modify hider color aqua
+team modify hider seeFriendlyInvisibles false
+team add seeker Seeker
+team modify seeker color red
+team modify seeker seeFriendlyInvisibles false
+team add freeze
+team modify freeze color dark_blue
+team modify freeze collisionRule never
+team add cheese
+team modify cheese color gold
+
+team add seeker Seeker
 hider (color aqua)
 - Disable seeFriendlyInvisibles
 seeker (color red)
@@ -81,19 +147,40 @@ All repeating command block (all loops) should be self terminating: all loops mu
     - If one or less walls are closed (at least three open), then pick between open, hidden, or closed
     - Activate the redstone encoder to find the corresponding maze room, and spawn it at maze.
 
-=======================
-    
--- Init things
-/bossbar set minecraft:time color blue
-/bossbar set minecraft:maze_progress color yellow
-
 =========================================
 
-# Attempt Maze Start
-execute if entity @e[type=armor_stand,name=origin,scores={mazeState=1}] at @e[type=armor_stand,name=console] run tellraw @a[distance=..10] {color:yellow,text:"Maze Generation is already in progress."}
+# Attempt CTF Generation
+execute if entity @e[type=armor_stand,name=origin,scores={mazeState=1}] at @e[type=armor_stand,name=console] run tellraw @a[distance=..10] {color:yellow,text:"Maze Generation is already in progress. Clear Maze to stop."}
 execute if entity @e[type=armor_stand,name=origin,scores={mazeState=2}] at @e[type=armor_stand,name=console] run tellraw @a[distance=..10] {color:red,text:"Clear the maze before generating a new one."}
 execute if entity @e[type=armor_stand,name=origin,scores={mazeState=3}] at @e[type=armor_stand,name=console] run tellraw @a[distance=..10] {color:red,text:"Currently clearing maze. Wait until clear finishes."}
--- check conditions
+-- start condition true:
+execute if entity @e[type=armor_stand,name=origin,scores={mazeState=0}]
+-- conditional
+tellraw @a {color:green,text:"Starting CTF Maze Generation"}
+-- conditional
+scoreboard players set .global x 5
+-- conditional
+scoreboard players set .global z 19
+-- conditional
+scoreboard players set .global level 2
+-- conditional
+scoreboard players operation .global multiblockPercentage = .temp multiblockPercentage
+---------------------
+-- conditional
+{start listener for loaded}
+-- conditional
+execute unless entity @e[type=armor_stand,name=origin,tag=loaded] run {start forceload add}
+-- conditional
+-- Set the maze state to generating
+scoreboard players set @e[type=armor_stand,name=origin] mazeState 1
+
+=======================================
+
+# Attempt Maze Start
+execute if entity @e[type=armor_stand,name=origin,scores={mazeState=1}] at @e[type=armor_stand,name=console] run tellraw @a[distance=..10] {color:yellow,text:"Maze Generation is already in progress. Clear Maze to stop."}
+execute if entity @e[type=armor_stand,name=origin,scores={mazeState=2}] at @e[type=armor_stand,name=console] run tellraw @a[distance=..10] {color:red,text:"Clear the maze before generating a new one."}
+execute if entity @e[type=armor_stand,name=origin,scores={mazeState=3}] at @e[type=armor_stand,name=console] run tellraw @a[distance=..10] {color:red,text:"Currently clearing maze. Wait until clear finishes."}
+-- start condition true:
 execute if entity @e[type=armor_stand,name=origin,scores={mazeState=0}]
 -- conditional
 tellraw @a {color:green,text:"Starting Maze Generation"}
@@ -112,6 +199,10 @@ execute unless entity @e[type=armor_stand,name=origin,tag=loaded] run {start for
 -- conditional
 -- Set the maze state to generating
 scoreboard players set @e[type=armor_stand,name=origin] mazeState 1
+-- conditional
+-- set the lever to power true
+{Enable spawning of maze center structure}
+
 
 ## Listener for loaded
 execute if entity @e[type=armor_stand,name=origin,tag=loaded] run {stop listener}
@@ -153,12 +244,21 @@ bossbar set minecraft:maze_progress players @a
 bossbar set minecraft:maze_progress visible true
 {start generate corners}
 tellraw @a {color:yellow,text:"Generating Maze..."}
+execute if score .global gameMode matches 4 run {start CTF Place Structures}
+
+## CTF Place structures
+execute at @n[name=origin] run place template maze:multiblock_blue_base ~31 ~ ~-10 clockwise_90
+execute at @n[name=origin] run place template maze:multiblock_red_base ~-3 ~ ~-116 counterclockwise_90
+execute at @n[name=origin] run place template maze:flag_zone ~11 ~ ~-60 counterclockwise_90
+execute at @n[name=origin] run place template maze:flag_zone ~4 ~ ~-46 counterclockwise_90
+execute at @n[name=origin] run place template maze:flag_zone ~18 ~ ~-74 counterclockwise_90
+{turn off maze center}
 
 ===============================================================
 
 # Init origin
 -- Summon origin from player
-execute at @p align xyz run summon armor_stand ~0.5 50.5 ~0.5 {CustomName:origin,CustomNameVisible:1b,NoGravity:1b,Marker:1b,Tags:["new"]}
+execute at @p align xyz run summon armor_stand ~0.5 50.5 ~0.5 {CustomName:origin,Invisible:1b,NoGravity:1b,Marker:1b,Tags:["new"]}
 
 -- Goal: get the origin armor stand to be centered within the chunk with at least 7 blocks behind and to the left of it
 -- This is to get the emerald blocks included within the chunk load area
@@ -289,7 +389,7 @@ tag @n[type=armor_stand,name=origin] add loaded
 ## Initialize References
 -- actual logic:
 -- initialize center:
-execute as @e[type=armor_stand,name=origin] at @s run summon armor_stand ~ ~ ~ {CustomName:center,CustomNameVisible:1b,NoGravity:1b,Marker:1b}
+execute as @e[type=armor_stand,name=origin] at @s run summon armor_stand ~ ~ ~ {CustomName:center,Invisible:1b,NoGravity:1b,Marker:1b}
 scoreboard players operation @e[type=armor_stand,name=center] x = .global x
 scoreboard players operation @e[type=armor_stand,name=center] z = .global z
 -- initialize path:
@@ -315,7 +415,7 @@ execute if entity @e[type=armor_stand,name=center,scores={x=..2,z=..2}] run {sto
 
 ## Corner loop rapid tick:
 -- note that the level scoreboard for path is 0 to n-1, but the corner armor stands range from 1 to n
-execute as @e[type=armor_stand,name=path] at @s run summon armor_stand ~ ~ ~ {CustomName:corner,NoGravity:1b,CustomNameVisible:1b,Marker:1b}
+execute as @e[type=armor_stand,name=path] at @s run summon armor_stand ~ ~ ~ {CustomName:corner,NoGravity:1b,Invisible:1b,Marker:1b}
 -- set corner's level scoreboard to path + 1
 execute as @e[type=armor_stand,name=path] at @s run scoreboard players operation @n[type=armor_stand,name=corner,distance=..0.1] level = @s level
 execute as @e[type=armor_stand,name=path] at @s run scoreboard players add @n[type=armor_stand,name=corner,distance=..0.1] level 1
@@ -359,6 +459,29 @@ execute as @e[type=armor_stand,name=path,scores={x=0}] at @s positioned ^ ^ ^7 i
 execute unless entity @e[type=armor_stand,name=path] run {end loop}
 execute as @e[type=armor_stand,name=path,scores={x=0}] at @s positioned ^ ^ ^7 run setblock ~ ~-100 ~ emerald_block
 execute as @e[type=armor_stand,name=path,scores={x=0}] at @s run rotate @s ~90 ~
+
+=======================================
+
+# Build multi level center
+## init
+kill @e[type=armor_stand,name=path]
+execute as @e[type=armor_stand,name=center] at @s run summon armor_stand ~ ~ ~ {CustomName:path,CustomNameVisible:1b,NoGravity:1b}
+scoreboard players set @e[type=armor_stand,name=path] level 1
+{start next}
+
+## loop
+execute as @e[type=armor_stand,name=path] if score @s level = .global level at @s run {place middle layer}
+-- conditional
+execute at @e[type=armor_stand,name=path] run {place dome above}
+-- conditional
+kill @e[type=armor_stand,name=path]
+execute unless entity @e[type=armor_stand,name=path] run {stop this loop}
+-- bottom floor
+execute as @e[type=armor_stand,name=path] if score @s level matches 1 at @s run {place bottom floor}
+-- middle floor (because the top floor is already checked for and the armor stand is killed)
+execute as @e[type=armor_stand,name=path] if score @s level matches 2.. at @s run {place middle floor}
+scoreboard players add @e[type=armor_stand,name=path] level 1
+execute as @e[type=armor_stand,name=path] at @s run tp @s ~ ~7 ~
 
 =========================================================
 
@@ -444,7 +567,7 @@ scoreboard players set .global multiblockPercentage 40
 -- Assume a corner is already tagged multiblock
 execute as @e[type=armor_stand,name=multiblock] at @s run tp @s ~ -130 ~
 kill @e[type=armor_stand,name=multiblock]
-execute as @e[type=armor_stand,name=corner,tag=multiblock] at @s run summon armor_stand ~ ~ ~ {CustomName:multiblock,CustomNameVisible:1b,NoGravity:1b}
+execute as @e[type=armor_stand,name=corner,tag=multiblock] at @s run summon armor_stand ~ ~ ~ {CustomName:multiblock,Invisible:1b,NoGravity:1b}
 -- if this is the first level, start the clock
 {place redstone dust}
 -- conditional
@@ -468,6 +591,11 @@ scoreboard players operation @e[type=armor_stand,name=multiblock] multiblockFill
 -- use constant scoreboard to divide by 10000 (100 * 100)
 scoreboard players set .var multiblockFill 10000
 scoreboard players operation @e[type=armor_stand,name=multiblock] multiblockFill /= .var multiblockFill
+-- CHANGED
+-- set max to 3*multiblockFill
+execute as @e[type=armor_stand,name=multiblock] run scoreboard players operation @s multiblockMax = @s multiblockFill
+scoreboard players set .var multiblockMax 3
+scoreboard players operation @e[type=armor_stand,name=multiblock] multiblockMax *= .var multiblockMax
 {start next}
 
 ## random position init
@@ -475,7 +603,7 @@ scoreboard players operation @e[type=armor_stand,name=multiblock] multiblockFill
 tp @e[type=armor_stand,name=multiblock] @n[type=armor_stand,name=corner,tag=multiblock]
 tag @e[type=armor_stand,name=multiblock] add move
 -- pick random cell positions within the ranges 0-globalx and 0-globalz
-execute store result score @e[type=armor_stand,name=multiblock] x run random value 0..2147483646
+execute store result score @e[type=armor_stand,name=multiblock] x run random value 0..21474836462
 scoreboard players operation @e[type=armor_stand,name=multiblock] x %= .global x
 execute store result score @e[type=armor_stand,name=multiblock] z run random value 0..2147483646
 scoreboard players operation @e[type=armor_stand,name=multiblock] z %= .global z
@@ -488,7 +616,7 @@ execute as @e[type=armor_stand,name=multiblock,tag=move,scores={z=1..}] at @s ru
 scoreboard players remove @e[type=armor_stand,name=multiblock,tag=move,scores={z=1..}] z 1
 execute as @e[type=armor_stand,name=multiblock,tag=move,scores={x=0,z=0}] run tag @s remove move
 -- conditional
-scoreboard players set @e[type=armor_stand,name=multiblock] attempts 10
+scoreboard players set @e[type=armor_stand,name=multiblock] attempts 5
 execute unless entity @e[type=armor_stand,name=multiblock,tag=move] run {stop this clock}
 
 ## randomizer commands
@@ -548,12 +676,18 @@ execute if score .global level matches 3.. if score @n[type=armor_stand,name=cor
 -- 3 levels, top level, 100% high
 execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level = .global level as @e[type=armor_stand,name=multiblock,tag=!move] run {trigger 1 high} setblock -80 -19 24 redstone_block
 ----------------
+-- CHANGED
+-- {
 -- if multiblockfill percentage is exceeded, stop
-execute as @e[type=armor_stand,name=multiblock,tag=!move,scores={multiblockFill=..0}] at @s run tp @s ~ -130 ~
+tag @e[type=armor_stand,name=multiblock,tag=!move,scores={multiblockFill=..0}] add kill
+-- if multiblockMax is exceeded, stop
+tag @e[type=armor_stand,name=multiblock,tag=!move,scores={multiblockMax=..0}] add kill
+execute as @e[type=armor_stand,name=multiblock,tag=kill] at @s run tp @s ~ -130 ~
 -- conditional
 kill @e[type=armor_stand,name=multiblock]
 -- conditional
 {start next multiblock level}
+-- }
 -- stop loop if no multiblock exists
 execute unless entity @e[type=armor_stand,name=multiblock] run {delete redstone dust}
 -- if cell is already filled roll new position
@@ -561,6 +695,9 @@ execute as @e[type=armor_stand,name=multiblock,tag=!move,scores={multiblockFill=
 -- after 5 attempts roll new position
 scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!move] attempts 1
 execute if entity @e[type=armor_stand,name=multiblock,tag=!move,scores={attempts=..0}] run {new random position}
+-- CHANGED
+-- conditional
+scoreboard players remove @e[type=armor_stand,name=multiblock] multiblockMax 1
 
 
 ## Randomizer arrays:
@@ -824,6 +961,7 @@ execute if entity @n[type=armor_stand,name=origin,tag=loaded] run setblock ~1 ~ 
 execute as @e[type=armor_stand,name=corner] at @s if score @s level = .global level run summon armor_stand ~ ~49 ~ {CustomName:yclear,CustomNameVisible:1b,NoGravity:1b,Tags:["clear"]}
 -- hide the progress bar
 bossbar set minecraft:maze_progress visible false
+tick rate 20
 {start next}
 
 -- loop
