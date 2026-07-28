@@ -455,7 +455,7 @@ scoreboard players remove @e[type=armor_stand,name=path,scores={x=1..}] x 1
 -- detect when path makes full loop
 execute as @e[type=armor_stand,name=path,scores={x=0}] at @s positioned ^ ^ ^7 if block ~ ~-100 ~ emerald_block run kill @s
 -- conditional
-{Start First Floor}
+{Start Build Spawn}
 execute unless entity @e[type=armor_stand,name=path] run {end loop}
 execute as @e[type=armor_stand,name=path,scores={x=0}] at @s positioned ^ ^ ^7 run setblock ~ ~-100 ~ emerald_block
 execute as @e[type=armor_stand,name=path,scores={x=0}] at @s run rotate @s ~90 ~
@@ -470,16 +470,20 @@ scoreboard players set @e[type=armor_stand,name=path] level 1
 {start next}
 
 ## loop
-execute as @e[type=armor_stand,name=path] if score @s level = .global level at @s run {place middle layer}
+execute as @e[type=armor_stand,name=path] if score @s level = .global level at @s run place template maze:spawn_middle ~-10 ~-5 ~-10
 -- conditional
-execute at @e[type=armor_stand,name=path] run {place dome above}
+execute at @e[type=armor_stand,name=path] run place template maze:spawn_top ~-10 ~6 ~-10
+-- conditional
+execute at @e[type=armor_stand,name=path] run summon armor_stand ~ ~9.5 ~ {CustomName:spawn,Marker:1b,Invisible:1b}
 -- conditional
 kill @e[type=armor_stand,name=path]
+-- conditional
+{Start First Floor}
 execute unless entity @e[type=armor_stand,name=path] run {stop this loop}
 -- bottom floor
-execute as @e[type=armor_stand,name=path] if score @s level matches 1 at @s run {place bottom floor}
+execute as @e[type=armor_stand,name=path] if score @s level matches 1 at @s run place template maze:spawn_bottom ~-10 ~ ~-10
 -- middle floor (because the top floor is already checked for and the armor stand is killed)
-execute as @e[type=armor_stand,name=path] if score @s level matches 2.. at @s run {place middle floor}
+execute as @e[type=armor_stand,name=path] if score @s level matches 2.. at @s run place template maze:spawn_middle ~-10 ~-5 ~-10
 scoreboard players add @e[type=armor_stand,name=path] level 1
 execute as @e[type=armor_stand,name=path] at @s run tp @s ~ ~7 ~
 
@@ -488,8 +492,6 @@ execute as @e[type=armor_stand,name=path] at @s run tp @s ~ ~7 ~
 # Level builder controls
 ## first level multiblock
 execute as @e[type=armor_stand,name=origin] at @s run tag @n[type=armor_stand,name=corner] add multiblock
--- place maze:spawn
-execute as @e[type=armor_stand,name=center] at @s run place template maze:spawn ~-10 ~ ~-10
 {start multiblock}
 
 ## second level and above
@@ -591,7 +593,6 @@ scoreboard players operation @e[type=armor_stand,name=multiblock] multiblockFill
 -- use constant scoreboard to divide by 10000 (100 * 100)
 scoreboard players set .var multiblockFill 10000
 scoreboard players operation @e[type=armor_stand,name=multiblock] multiblockFill /= .var multiblockFill
--- CHANGED
 -- set max to 3*multiblockFill
 execute as @e[type=armor_stand,name=multiblock] run scoreboard players operation @s multiblockMax = @s multiblockFill
 scoreboard players set .var multiblockMax 3
@@ -607,6 +608,7 @@ execute store result score @e[type=armor_stand,name=multiblock] x run random val
 scoreboard players operation @e[type=armor_stand,name=multiblock] x %= .global x
 execute store result score @e[type=armor_stand,name=multiblock] z run random value 0..2147483646
 scoreboard players operation @e[type=armor_stand,name=multiblock] z %= .global z
+scoreboard players remove @e[type=armor_stand,name=multiblock] multiblockMax 1
 execute if entity @e[type=armor_stand,name=multiblock] run {start next}
 
 ## random position loop; rapid tick (as fast as possible)
@@ -676,8 +678,6 @@ execute if score .global level matches 3.. if score @n[type=armor_stand,name=cor
 -- 3 levels, top level, 100% high
 execute if score .global level matches 3.. if score @n[type=armor_stand,name=corner,tag=multiblock] level = .global level as @e[type=armor_stand,name=multiblock,tag=!move] run {trigger 1 high} setblock -80 -19 24 redstone_block
 ----------------
--- CHANGED
--- {
 -- if multiblockfill percentage is exceeded, stop
 tag @e[type=armor_stand,name=multiblock,tag=!move,scores={multiblockFill=..0}] add kill
 -- if multiblockMax is exceeded, stop
@@ -687,7 +687,6 @@ execute as @e[type=armor_stand,name=multiblock,tag=kill] at @s run tp @s ~ -130 
 kill @e[type=armor_stand,name=multiblock]
 -- conditional
 {start next multiblock level}
--- }
 -- stop loop if no multiblock exists
 execute unless entity @e[type=armor_stand,name=multiblock] run {delete redstone dust}
 -- if cell is already filled roll new position
@@ -695,9 +694,6 @@ execute as @e[type=armor_stand,name=multiblock,tag=!move,scores={multiblockFill=
 -- after 5 attempts roll new position
 scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!move] attempts 1
 execute if entity @e[type=armor_stand,name=multiblock,tag=!move,scores={attempts=..0}] run {new random position}
--- CHANGED
--- conditional
-scoreboard players remove @e[type=armor_stand,name=multiblock] multiblockMax 1
 
 
 ## Randomizer arrays:

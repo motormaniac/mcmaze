@@ -14,15 +14,18 @@ Tell players to turn sounds on
 Explicitely tell players to remove
 
 ## Change Notes
-Change tp locations for maze lobby
-When starting mouse mode, make at least one person not spectator
+Portals enabled
 Allow 0% multiblock fill
-Add multiblock time limit
-Change Chicken to Settlers of Catan Robber
-Put a floating bow item display in the bow room
+Add spectate maze generation
+Add portal between maze lobby and fountain
+set tutorial players to spectator team
+Change repeating command blocks to always active
+Change tp locations for maze lobby
+Make a minigame in the lobby
+When starting mouse mode, make at least one person not spectator
+Change bow room to crossbow
 If no portals spawn in the maze, the process fails
-Fix all item lores and make sure in game commands match these lores
-Reset spawnprot
+Create lobby tp item
 
 Gamemodes
 Freeztag
@@ -94,8 +97,6 @@ scoreboard players remove .global time 1
 execute if score .global gameMode matches 1 if score .global time matches ..0 if entity @p[team=seeker] if entity @p[team=hider] run {next}
 -- start next during mouse
 execute if score .global gameMode matches 2..4 if score .global time matches ..0 run {next}
-
--- CHANGED
 
 ## next
 {stop loop}
@@ -414,6 +415,7 @@ bossbar set minecraft:time visible false
 effect clear @a
 tag @a[tag=cluck] add removeCluck
 tag @a remove firework
+stopsound @a record
 scoreboard players set .global time 100
 team modify seeker nametagVisibility always
 team modify hider nametagVisibility always

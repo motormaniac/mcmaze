@@ -94,9 +94,9 @@ execute as @a[team=seeker,tag=glow] run tag @a[team=hider] add glowTarget
 execute as @a[tag=glow,tag=fail] at @s run playsound minecraft:block.anvil.land master @s ~ ~ ~ 0.5
 -- handle success
 effect give @a[tag=glowTarget] glowing 5
-execute as @a at @a[tag=glow,tag=!fail] run playsound note_block.chime
+execute as @a at @a[tag=glow,tag=!fail] run playsound block.note_block.chime
 -- make failure sound
-execute as @a[tag=glowTarget] run playsound minecraft:block.amethyst_block.chime
+execute as @a[tag=glowTarget] at @s run playsound minecraft:block.amethyst_block.resonate
 execute as @a[team=hider,tag=glow,tag=!fail] run tellraw @s [{color:gold,text:"Revealing all "},{color:red,text:"seekers"}]
 execute as @a[team=seeker,tag=glow,tag=!fail] run tellraw @s [{color:gold,text:"Revealing all "},{color:aqua,text:"hiders"}]
 tellraw @a[tag=glowTarget] {color:gold,text:"Your position has been revealed"}
@@ -364,12 +364,21 @@ tag @a[tag=freeze] remove freeze
 -- (Run this in the maze generation code)
 /execute as @e[type=armor_stand,name=path] at @s run tag @e[type=armor_stand,name=room,tag=lootSpot,distance=..4] add lootReady
 
+## Stop Item Spawning
+{Stop item loops}
+kill @e[type=item,tag=pickup]
+kill @e[type=armor_stand,tag=mine]
+kill @e[type=armor_stand,name=poultry]
+kill @e[type=chicken,tag=poultry]
+
 -- assume that all tag=lootReady armor stands are also tag=loot
 ## Item reset
-execute if score .itemsEnabled settings matches 1 run kill @e[type=item,tag=pickup]
+kill @e[type=item,tag=pickup]
+kill @e[type=armor_stand,tag=mine]
+kill @e[type=armor_stand,name=poultry]
+kill @e[type=chicken,tag=poultry]
 execute if score .itemsEnabled settings matches 1 run scoreboard players reset @e[type=armor_stand,tag=lootReady] rng
 execute if score .itemsEnabled settings matches 1 run scoreboard players reset @e[type=armor_stand,tag=lootReady] loot
-execute if score .itemsEnabled settings matches 1 run kill @e[type=armor_stand,tag=mine]
 execute if score .itemsEnabled settings matches 1 run {start next}
 
 ## slowly spawn items as time goes on:
