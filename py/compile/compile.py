@@ -549,6 +549,9 @@ class Compiler:
           text = collapse(self.substitute(statement.text, statement.offset, scope))
           if not text:
             raise self.error("empty command", statement.offset)
+          if text.startswith(("!", "#--")):
+            # the IR would read this line as a modifier or compiler comment
+            raise self.error("commands can't start with ! or #--", statement.offset)
           if statement.modifiers:
             self.output.append("!" + ", ".join(m for m in MODIFIERS if m in statement.modifiers))
           self.output.append(text)

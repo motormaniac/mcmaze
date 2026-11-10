@@ -195,11 +195,7 @@ Compiler comments start with `#--`. They can go anywhere, are templated, and are
     say 1
 
 ## Compiler IR
-- The compiler outputs a format that resolves all templates.
-- It only contains commands, `!` modifier lines and compiler comments, one per line (semicolons are removed).
-- White space outside quotes collapses to single spaces (Minecraft rejects double spaces). Text inside quotes is kept exactly.
-
-Example:
+The compiler outputs IR with every template resolved. The format is defined in [IR](#ir-intermediate-representation) below.
 
     #-- This is a compiler comment
     func $talk ($x) (
@@ -231,3 +227,54 @@ The compiler stops at the first error. Errors show the file, line and column, an
 
 ## Tests
 `compile/tests/pass/` holds pairs like `loops.mct` and `loops.txt` (the expected IR). `compile/tests/fail/` holds pairs like `recursion_direct.mct` and `recursion_direct.err` (the expected first line of the error, plus an optional trace). Run them with `uv run pytest` from `py/`.
+
+# IR (Intermediate Representation)
+
+The IR is what `compile.py` writes to `compile/out/<name>.txt` and what `schem.py` reads. It's one command chain, written as plain text with one item per line. It isn't meant to be written by hand, so it's whitespace sensitive.
+
+## Lines
+Every line is one of three kinds, decided by how it starts:
+
+| Starts with | Line | Meaning |
+|---|---|---|
+| `#--` | compiler comment | free text, ignored by `schem.py` |
+| `!` | modifier | changes the command on the next line |
+| anything else | command | one chain command block |
+
+    ir       = { line "\n" } ;
+    line     = comment | modifier | command ;
+    comment  = "#--" text ;
+    modifier = "!conditional" | "!needs_redstone" | "!conditional, needs_redstone" ;
+    command  = text that doesn't start with "#--" or "!" ;
+
+## Commands
+- Each command line is one chain command block. The first command is the start of the chain, and the rest follow in order.
+- A command is unconditional and always active unless a modifier line comes right before it.
+- Commands have every template resolved, no `;`, no leading or trailing spaces, and single spaces between words outside quotes. Text inside quotes is exactly as written.
+- A literal `$` is just a `$` (it was written as `$$` in the `.mct` file).
+
+## Modifiers
+- Only the three forms above are valid, always in that order and spelling.
+- A modifier line is always followed directly by a command line, and it only applies to that command.
+
+## Guarantees
+`compile.py` always writes IR that follows these rules, so `schem.py` can reject anything else as invalid IR:
+- At least one command.
+- No blank lines. The file uses `\n` line endings and ends with a newline.
+- Compiler comments stay in the same order relative to the commands.
+
+Example:
+
+    #-- place the walls
+    execute if entity @e[tag=!fail]
+    !conditional
+    place template maze:walls ~ ~ ~
+    !conditional, needs_redstone
+    say "placed walls"
+
+| Line | Command block |
+|---|---|
+| `#-- place the walls` | none |
+| `execute if entity @e[tag=!fail]` | chain, unconditional, always active |
+| `place template maze:walls ~ ~ ~` | chain, conditional, always active |
+| `say "placed walls"` | chain, conditional, needs redstone |

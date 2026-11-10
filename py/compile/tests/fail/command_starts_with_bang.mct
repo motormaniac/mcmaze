@@ -1,0 +1,5 @@
+-- after templating, this command would look like a modifier line in the IR
+$X = !conditional;
+func $main () (
+  $X;
+)
