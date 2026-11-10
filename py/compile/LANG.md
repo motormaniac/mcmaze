@@ -1,0 +1,233 @@
+# Define the templating language
+
+`compile.py` turns a `.mct` file into IR. `schem.py` (planned separately) turns the IR into a WorldEdit schematic.
+
+    cd py
+    uv run compile/compile.py in/walls.mct
+    -- writes compile/out/walls.txt
+
+One `.mct` file is one command chain, which becomes one schematic. Every command is a chain command block.
+
+## General
+
+Comments are defined using double dashes at the start of a line (leading whitespace is ok). Everything after them is ignored. Double dashes anywhere else are normal text.
+
+    -- this is a comment
+    say a--b;   -- this is NOT a comment, it's part of the command
+
+Comment lines can go inside a multi-line command.
+
+    execute
+      -- only the pigs
+      as @e[type=pig]
+      run say hi;
+    -- produces:
+    execute as @e[type=pig] run say hi
+
+Block comments start with exactly `--[` and end at the first `]--`, which can be anywhere. They don't nest. An unclosed `--[` is an error.
+
+    --[
+      This is a block comment.
+      All text within here is ignored.
+    ]--
+    --[ one line ]-- say hi;
+
+Code is separated by semicolons, and white space should not matter. Every command and global ends with `;`, including the last one in a body. Everything is case sensitive.
+
+    kill @e;
+    execute
+      as @n
+      run say hello;
+    -- the above is equivalent to:
+    execute as @n run say hello;
+
+Semicolons and commas inside quotes, `[ ]` or `{ }` don't count, so NBT and strings never need escaping. `\"` and `\'` don't end a string. A string can't span a line break.
+
+    data merge entity @n {UUID:[I;1,2,3,4]};
+    say "wait; then (go)";
+
+## Statements
+
+Outside a function body, a file can only contain functions, globals, comments and compiler comments. Inside a body, each statement is recognized by how it starts:
+
+| Starts with | Statement |
+|---|---|
+| `--` / `--[` | comment |
+| `#--` | compiler comment |
+| `!` | command block modifier |
+| `for $` | loop |
+| `$name(` (no space) | function call |
+| anything else | command, read until `;` |
+
+`for` and `func` only count as whole words, so `function maze:build;` is a command.
+
+## Variables
+
+Variables start with `$` followed by letters, digits and `_`. The longest name always wins. Use `${name}` when text follows directly, and `$$` for a literal `$`. Variables are also replaced inside quotes. Using an undefined variable is an error.
+
+    for $i in 0..1 (
+      say Array${i}End costs $$5 "item $i";
+    )
+    -- produces:
+    say Array0End costs $5 "item 0"
+    say Array1End costs $5 "item 1"
+
+Global variables are defined outside functions. Values are raw text, trimmed. Quotes are kept. A global can use other globals.
+
+    $HELLO_WORLD = "hello world";
+    $GREETING = $HELLO_WORLD from me;
+
+    func $main () (
+      say $GREETING;
+    )
+    -- produces:
+    say "hello world" from me
+
+## Functions
+Functions are more like templates. When expanded, the argument values replace the references. Arguments and function names are defined using $.
+
+    func $example_func ($arg1, $arg2) (
+      kill $arg1;
+      execute as $arg2 run say hello;
+    )
+
+Funcs are called inside a body using $syntax. Arguments split on commas outside quotes and brackets, so selectors, NBT and strings work as-is.
+
+    $example_func(@e[type=pig,limit=1], bob);
+
+    -- produces:
+    kill @e[type=pig,limit=1]
+    execute as bob run say hello
+
+Rules:
+- `func $main ()` is required, takes no arguments, and is the entry point. Only `$main` and what it calls produce output. Unused functions are fine.
+- Functions must be declared outside a function body, in any order.
+- Calling with the wrong number of arguments is an error.
+- Recursion (direct or through other functions) is an error.
+- A call can't be used inside a command: `say $f();` is an error.
+- Scope is lexical. A body can only see its own parameters, its loop variables and globals.
+- No shadowing: a parameter or loop variable can't reuse the name of a global, a parameter, or a loop variable it's nested in. Functions and globals share names, so they can't match either.
+
+        func $main () (
+          for $i in 0..3 (
+            $show();        -- error in $show: undefined variable $i
+            $show_i($i);    -- ok
+          )
+        )
+
+## Loops
+
+For loops use similar templating. Loops can be nested and can contain calls.
+
+    -- ranges are inclusive on both ends (different than python)
+    for $i in 0..5 (
+      data get storage test Array[$i];
+    )
+
+    -- produces:
+    data get storage test Array[0]
+    data get storage test Array[1]
+    data get storage test Array[2]
+    data get storage test Array[3]
+    data get storage test Array[4]
+    data get storage test Array[5]
+
+Bounds can be negative or variables (they must be whole numbers). If the start is bigger, it counts down.
+
+    for $i in $SIZE..-1 (
+      say $i;
+    )
+    -- with $SIZE = 1; produces:
+    say 1
+    say 0
+    say -1
+
+Allow for for loops to iterate through an array of terms. Items split the same way as arguments.
+
+    for $x in (cat, dog, @e[type=rabbit,limit=1]) (
+      say $x;
+    )
+
+    -- produces:
+    say cat
+    say dog
+    say @e[type=rabbit,limit=1]
+
+## Command Block Modifiers
+
+Every command is an unconditional, always active chain command block by default. A `!` line changes the command directly after it. It ends at the newline and can only use `conditional` and `needs_redstone`. It can't go before a call or loop, so put it inside the body instead.
+
+    execute if entity @e[tag=!fail];
+    !conditional
+    say placed;
+    !conditional, needs_redstone
+    say also placed;
+    !conditional
+    $talk(cat);   -- error: ! can't go before a call
+
+## Compiler Comments
+Compiler comments start with `#--`. They can go anywhere, are templated, and are kept in the IR (`schem.py` ignores them). They show up in the IR in the same order relative to the commands. Top-level ones are ordered around `func $main`: the ones above it come before its commands, and the ones below come after.
+
+    #-- start
+    func $main () (
+      say hi;
+      #-- middle
+      say bye;
+    )
+    #-- end
+    -- produces:
+    #-- start
+    say hi
+    #-- middle
+    say bye
+    #-- end
+
+    func $main () (
+      for $i in 0..1 (
+        #-- This is iteration $i
+        say $i;
+      )
+    )
+    -- produces:
+    #-- This is iteration 0
+    say 0
+    #-- This is iteration 1
+    say 1
+
+## Compiler IR
+- The compiler outputs a format that resolves all templates.
+- It only contains commands, `!` modifier lines and compiler comments, one per line (semicolons are removed).
+- White space outside quotes collapses to single spaces (Minecraft rejects double spaces). Text inside quotes is kept exactly.
+
+Example:
+
+    #-- This is a compiler comment
+    func $talk ($x) (
+      execute as $x
+        run say "My name is $x";
+    )
+
+    func $main () (
+      for $i in (cat, dog, bunny) (
+        $talk($i);
+      )
+    )
+
+    -- produces:
+    #-- This is a compiler comment
+    execute as cat run say "My name is cat"
+    execute as dog run say "My name is dog"
+    execute as bunny run say "My name is bunny"
+
+## Errors
+The compiler stops at the first error. Errors show the file, line and column, and errors during expansion show how it got there. An empty `$main` is an error. There are no warnings.
+
+    walls.mct:4:16: undefined variable $nmae
+        execute as $nmae run say hi;
+                   ^
+      in $talk($x = dog)   called at walls.mct:12
+      in for $i = dog      at walls.mct:11
+      in $main             at walls.mct:10
+
+## Tests
+`compile/tests/` holds pairs like `loops.mct` and `loops.txt` (the expected IR), plus `.mct` files that should fail with a given error. Run them with `uv run pytest` from `py/`.
