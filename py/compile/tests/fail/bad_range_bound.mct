@@ -1,0 +1,9 @@
+func $main () (
+  $count(abc);
+)
+
+func $count ($n) (
+  for $i in 0..$n (
+    say $i;
+  )
+)

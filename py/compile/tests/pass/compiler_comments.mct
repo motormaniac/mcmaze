@@ -1,0 +1,17 @@
+-- #-- comments are templated and keep their order relative to commands
+#-- start
+func $helper ($x) (
+  #-- helper for $x
+  say $x;
+)
+#-- between helper and main
+func $main () (
+  say hi;
+  #-- middle
+  for $i in 0..1 (
+    #-- This is iteration $i
+    $helper($i);
+  )
+  #-- costs $$5
+)
+#-- end

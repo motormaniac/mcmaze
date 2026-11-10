@@ -1,0 +1,6 @@
+$NAME = bob;
+func $main () (
+  for $NAME in (a, b) (
+    say $NAME;
+  )
+)

@@ -1,0 +1,4 @@
+func $main () (
+  say one;
+  say two
+)

@@ -1,0 +1,5 @@
+$A = hi
+
+func $main () (
+  say $A;
+)

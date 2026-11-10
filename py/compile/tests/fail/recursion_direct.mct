@@ -1,0 +1,8 @@
+func $main () (
+  $loop();
+)
+
+func $loop () (
+  say again;
+  $loop();
+)

@@ -1,0 +1,6 @@
+say a--b
+say hi -- not a comment
+execute as @e[type=pig] run say pig
+say after block
+say after multi
+say x --[ not a comment ]

@@ -1,0 +1,7 @@
+kill @e[type=pig,limit=1]
+execute as bob run say hello
+tellraw @a "hello, world"
+data merge entity @n {a:1,b:[2,3]}
+say cat and dog
+say no args
+say [padded] [x]

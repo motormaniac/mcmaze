@@ -1,0 +1,11 @@
+func $main () (
+  $talk();
+)
+
+func $talk () (
+  say one;
+)
+
+func $talk () (
+  say two;
+)

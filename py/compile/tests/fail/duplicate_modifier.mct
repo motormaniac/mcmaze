@@ -1,0 +1,4 @@
+func $main () (
+  !conditional, conditional
+  say hi;
+)

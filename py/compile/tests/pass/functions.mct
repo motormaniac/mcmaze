@@ -1,0 +1,38 @@
+-- arguments split on commas outside quotes and brackets, functions in any order
+func $main () (
+  $example_func(@e[type=pig,limit=1], bob);
+  $talk("hello, world", {a:1,b:[2,3]});
+  $outer(cat);
+  $no_args();
+  $spaced(   padded   ,   x   );
+)
+
+func $example_func ($arg1, $arg2) (
+  kill $arg1;
+  execute as $arg2 run say hello;
+)
+
+func $talk ($msg, $nbt) (
+  tellraw @a $msg;
+  data merge entity @n $nbt;
+)
+
+func $outer ($x) (
+  $inner($x, dog);
+)
+
+func $inner ($a, $b) (
+  say $a and $b;
+)
+
+func $no_args () (
+  say no args;
+)
+
+func $spaced ($a, $b) (
+  say [$a] [$b];
+)
+
+func $unused ($x) (
+  say $x;
+)

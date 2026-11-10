@@ -1,0 +1,12 @@
+#-- start
+#-- between helper and main
+say hi
+#-- middle
+#-- This is iteration 0
+#-- helper for 0
+say 0
+#-- This is iteration 1
+#-- helper for 1
+say 1
+#-- costs $5
+#-- end

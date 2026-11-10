@@ -1,0 +1,20 @@
+-- line comment at the top
+  -- indented line comment
+--[
+  block comment
+  say not a command;
+]--
+-- [todo] this is a line comment, not a block comment
+func $main () (
+  -- comment in a body
+  say a--b;
+  say hi -- not a comment;
+  execute
+    -- comment inside a command
+    as @e[type=pig]
+    run say pig;
+  --[ one line ]-- say after block;
+  --[ multi
+  line ]-- say after multi;
+  say x --[ not a comment ];
+)

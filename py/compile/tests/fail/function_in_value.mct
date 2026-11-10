@@ -1,0 +1,7 @@
+$G = $talk;
+func $main () (
+  say $G;
+)
+func $talk () (
+  say hi;
+)

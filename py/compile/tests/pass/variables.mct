@@ -1,0 +1,13 @@
+-- longest match, ${name}, $$, and replacing inside quotes
+func $main () (
+  for $i in 0..1 (
+    say Array${i}End costs $$5 "item $i";
+  )
+  $longest(short, long);
+)
+
+func $longest ($a, $ab) (
+  say $a $ab ${a}b;
+  say pos:$a,$ab;
+  say $$a;
+)

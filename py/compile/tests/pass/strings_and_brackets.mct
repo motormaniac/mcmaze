@@ -1,0 +1,12 @@
+-- ; and ) inside quotes or brackets are part of the command
+func $main () (
+  data merge entity @n {UUID:[I;1,2,3,4]};
+  say "wait; then (go)";
+  say "keep   these    spaces";
+  say "she said \"hi; there\"";
+  say 'it\'s; fine';
+  tellraw @a {"text":"a; b","color":"red"};
+  summon pig ~ ~ ~ {CustomName:'"Bob; the pig"'};
+  say (bare parens are text);
+  say don't stop, it's fine;
+)

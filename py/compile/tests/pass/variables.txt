@@ -1,0 +1,5 @@
+say Array0End costs $5 "item 0"
+say Array1End costs $5 "item 1"
+say short long shortb
+say pos:short,long
+say $a

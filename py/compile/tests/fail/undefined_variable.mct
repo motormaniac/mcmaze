@@ -1,0 +1,14 @@
+-- the error example from LANG.md, with its expansion trace
+func $talk ($x) (
+  say talking;
+  execute as $nmae run say hi;
+)
+
+func $other () (
+  say other;
+)
+func $main () (
+  for $i in (cat, dog) (
+    $talk($i);
+  )
+)

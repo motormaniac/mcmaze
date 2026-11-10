@@ -1,0 +1,14 @@
+-- multi-line commands, whitespace collapse, keywords only as whole words
+func $main () (
+  kill @e[type=pig];
+  execute
+    as @n
+    run say hello;
+  execute   as @a    at @s run    tp ~ ~1 ~;
+  /tp @p 0 64 0;
+  function maze:build;
+  forceload add 0 0;
+  format_is_not_a_keyword;
+  say a; say b;
+  say spaced ;
+)

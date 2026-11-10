@@ -1,0 +1,19 @@
+execute if entity @e[tag=!fail]
+!conditional
+say placed
+!needs_redstone
+say powered
+!conditional, needs_redstone
+say both
+!conditional, needs_redstone
+say both reversed
+!conditional
+say commented
+say check 0
+!conditional
+say then 0
+say check 1
+!conditional
+say then 1
+!conditional
+place template maze:walls ~ ~ ~

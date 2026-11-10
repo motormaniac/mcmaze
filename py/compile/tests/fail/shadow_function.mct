@@ -1,0 +1,9 @@
+func $main () (
+  for $talk in (a, b) (
+    say $talk;
+  )
+)
+
+func $talk () (
+  say hi;
+)

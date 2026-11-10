@@ -1,0 +1,9 @@
+$talk = hello;
+
+func $main () (
+  say hi;
+)
+
+func $talk () (
+  say two;
+)

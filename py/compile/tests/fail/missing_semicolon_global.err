@@ -1,0 +1,1 @@
+missing_semicolon_global.mct:1:1: global $A never ended, expected ;

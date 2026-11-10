@@ -41,7 +41,7 @@ Code is separated by semicolons, and white space should not matter. Every comman
     -- the above is equivalent to:
     execute as @n run say hello;
 
-Semicolons and commas inside quotes, `[ ]` or `{ }` don't count, so NBT and strings never need escaping. `\"` and `\'` don't end a string. A string can't span a line break.
+Semicolons and commas inside quotes, `[ ]` or `{ }` don't count, so NBT and strings never need escaping. `\"` and `\'` don't end a string. A string can't span a line break. A quote right after a letter or digit isn't a string, so `say don't;` works.
 
     data merge entity @n {UUID:[I;1,2,3,4]};
     say "wait; then (go)";
@@ -91,7 +91,7 @@ Functions are more like templates. When expanded, the argument values replace th
       execute as $arg2 run say hello;
     )
 
-Funcs are called inside a body using $syntax. Arguments split on commas outside quotes and brackets, so selectors, NBT and strings work as-is.
+Funcs are called inside a body using $syntax. Arguments split on commas outside quotes, brackets and parentheses, so selectors, NBT and strings work as-is.
 
     $example_func(@e[type=pig,limit=1], bob);
 
@@ -155,7 +155,7 @@ Allow for for loops to iterate through an array of terms. Items split the same w
 
 ## Command Block Modifiers
 
-Every command is an unconditional, always active chain command block by default. A `!` line changes the command directly after it. It ends at the newline and can only use `conditional` and `needs_redstone`. It can't go before a call or loop, so put it inside the body instead.
+Every command is an unconditional, always active chain command block by default. A `!` line changes the command directly after it. It ends at the newline and can use `conditional`, `needs_redstone`, or both in any order. The IR always writes them as `!conditional, needs_redstone`. It can't go before a call or loop, so put it inside the body instead.
 
     execute if entity @e[tag=!fail];
     !conditional
@@ -230,4 +230,4 @@ The compiler stops at the first error. Errors show the file, line and column, an
       in $main             at walls.mct:10
 
 ## Tests
-`compile/tests/` holds pairs like `loops.mct` and `loops.txt` (the expected IR), plus `.mct` files that should fail with a given error. Run them with `uv run pytest` from `py/`.
+`compile/tests/pass/` holds pairs like `loops.mct` and `loops.txt` (the expected IR). `compile/tests/fail/` holds pairs like `recursion_direct.mct` and `recursion_direct.err` (the expected first line of the error, plus an optional trace). Run them with `uv run pytest` from `py/`.

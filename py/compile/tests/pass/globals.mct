@@ -1,0 +1,18 @@
+-- values are raw text: trimmed, quotes kept, can use other globals in any order
+$HELLO_WORLD = "hello world";
+$GREETING = $HELLO_WORLD from me;
+$TARGET = @e[type=pig,limit=1];
+$SPACED =    padded    value   ;
+$FIRST = $SECOND!;
+$SECOND = two;
+
+func $main () (
+  say $HELLO_WORLD;
+  say $GREETING;
+  kill $TARGET;
+  say [$SPACED] "$SPACED";
+  say $FIRST;
+  say $LATE;
+)
+
+$LATE = declared after main;

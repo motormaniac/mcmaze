@@ -1,0 +1,4 @@
+undefined_variable.mct:4:14: undefined variable $nmae
+  in $talk($x = cat)   called at undefined_variable.mct:12
+  in for $i = cat      at undefined_variable.mct:11
+  in $main             at undefined_variable.mct:10

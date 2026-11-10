@@ -1,0 +1,1 @@
+global_cycle.mct:2:6: recursive global: $A -> $B -> $A

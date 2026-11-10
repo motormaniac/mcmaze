@@ -1,0 +1,5 @@
+say hi;
+
+func $main () (
+  say hi;
+)

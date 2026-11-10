@@ -1,0 +1,25 @@
+say up 0
+say up 1
+say up 2
+say down 2
+say down 1
+say down 0
+say neg -1
+say neg 0
+say neg 1
+say once 3
+say var 1
+say var 0
+say var -1
+say count 1
+say count 2
+say cat
+say dog
+say @e[type=rabbit,limit=1]
+say [spaced]
+say ["a, b"]
+say [1]
+say 0a
+say 0b
+say 1a
+say 1b

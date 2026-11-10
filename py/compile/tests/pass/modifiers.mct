@@ -1,0 +1,26 @@
+-- ! lines apply to the next command and are written in a standard form
+func $main () (
+  execute if entity @e[tag=!fail];
+  !conditional
+  say placed;
+  !needs_redstone
+  say powered;
+  !conditional, needs_redstone
+  say both;
+  !  needs_redstone ,conditional
+  say both reversed;
+  !conditional
+  -- comment lines in between are fine
+  say commented;
+  for $i in 0..1 (
+    say check $i;
+    !conditional
+    say then $i;
+  )
+  $place(walls);
+)
+
+func $place ($name) (
+  !conditional
+  place template maze:$name ~ ~ ~;
+)

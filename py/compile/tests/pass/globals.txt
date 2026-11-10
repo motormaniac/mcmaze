@@ -1,0 +1,6 @@
+say "hello world"
+say "hello world" from me
+kill @e[type=pig,limit=1]
+say [padded value] "padded value"
+say two!
+say declared after main

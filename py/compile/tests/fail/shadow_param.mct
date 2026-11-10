@@ -1,0 +1,9 @@
+func $main () (
+  $f(1);
+)
+
+func $f ($x) (
+  for $x in 0..1 (
+    say $x;
+  )
+)

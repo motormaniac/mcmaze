@@ -1,0 +1,9 @@
+func $main () (
+  for $i in 0..3 (
+    $show();
+  )
+)
+
+func $show () (
+  say $i;
+)

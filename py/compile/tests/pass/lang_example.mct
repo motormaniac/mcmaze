@@ -1,0 +1,11 @@
+#-- This is a compiler comment
+func $talk ($x) (
+  execute as $x
+    run say "My name is $x";
+)
+
+func $main () (
+  for $i in (cat, dog, bunny) (
+    $talk($i);
+  )
+)

@@ -1,0 +1,6 @@
+-- "$talk (cat)" has a space, so it's a command that uses $talk as a value
+func $main () (
+  $talk (cat);
+)
+
+func $talk ($x) ( say $x; )

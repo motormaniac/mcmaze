@@ -1,0 +1,7 @@
+func $main () (
+  $pair(a);
+)
+
+func $pair ($a, $b) (
+  say $a $b;
+)

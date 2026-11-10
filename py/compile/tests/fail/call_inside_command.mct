@@ -1,0 +1,7 @@
+func $main () (
+  say $talk(cat);
+)
+
+func $talk ($x) (
+  say $x;
+)

@@ -1,0 +1,4 @@
+#-- This is a compiler comment
+execute as cat run say "My name is cat"
+execute as dog run say "My name is dog"
+execute as bunny run say "My name is bunny"

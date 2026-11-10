@@ -1,0 +1,7 @@
+-- a command can start with a variable
+$CMD = kill;
+func $main () (
+  $CMD @e[type=pig];
+  $CMD
+    @e[type=cow];
+)

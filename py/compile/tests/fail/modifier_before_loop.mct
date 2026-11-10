@@ -1,0 +1,6 @@
+func $main () (
+  !conditional
+  for $i in 0..1 (
+    say $i;
+  )
+)

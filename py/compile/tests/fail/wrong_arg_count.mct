@@ -1,0 +1,7 @@
+func $main () (
+  $talk(cat, dog);
+)
+
+func $talk ($x) (
+  say $x;
+)

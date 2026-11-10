@@ -1,0 +1,1 @@
+bad_range_bound.mct:6:16: range bound '$n' is 'abc', expected an integer
