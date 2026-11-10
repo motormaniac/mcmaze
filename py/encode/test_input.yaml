@@ -1,0 +1,16 @@
+# &prison names the offsets so later groups can reuse them with *prison
+heading:
+  - note: comment
+    fill: 2
+    offsets: &prison [[0, 4], [-4, 0], [-4, -7], [0, -11], [4, -7], [4, 0]]
+    buildings:
+      prison: [hhocoh]
+  - fill: 4
+    offsets: *prison
+    buildings:
+      prison: [hhocoh]
+  - note: "comment #2"
+    fill: 8
+    offsets: *prison
+    buildings:
+      prison: [hhocoh]

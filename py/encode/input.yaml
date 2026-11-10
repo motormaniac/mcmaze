@@ -1,0 +1,45 @@
+# Each section (multiblocks, staircases) is a list of groups that share offsets and fill.
+#   size:    optional, printed as a "-- size" header
+#   note:    optional, printed as a "-- note" line (also allowed on a building)
+#   fill:    the floor area of the building ignoring height, used for multiblockFill. Default 1.
+#            Ex: both 2x1x2 and 2x2x2 have a fill of 4
+#   offsets: (x, z) offsets of each check block, front then clockwise. Default [[0, 4], [-4, 0], [0, -4], [4, 0]]
+#   buildings: name -> floors from bottom to top, one block per offset
+#            or name -> {floors: [...], note: ...}
+# Block codes: c = netherite_block, o = diamond_block, h = gold_block
+
+multiblocks:
+  - size: 1x2
+    fill: 2
+    offsets: [[0, 4], [-4, 0], [-4, -7], [0, -11], [4, -7], [4, 0]]
+    buildings:
+      multiblock_prison: [hhocoh]
+      multiblock_archery: [chocoh]
+      multiblock_storage: [cohcoh]
+      multiblock_meeting_room: [chhcoo]
+      multiblock_office: [ochchc]
+      multiblock_overlook: [coccoh, hhcoch]
+      multiblock_greenroom: [hccocc, cccccc]
+
+  - size: 2x2
+    fill: 4
+    offsets: [[0, 4], [-7, 4], [-11, 0], [-11, -7], [-7, -11], [0, -11], [4, -7], [4, 0]]
+    buildings:
+      multiblock_training: [ccoohhoo]
+      multiblock_dining: [hhcchhoo]
+      multiblock_courtyard: [ooocccco, cccooooc]
+      multiblock_grand_staircase: [ochhcocc, hoccochc]
+      multiblock_dining_and_bedroom: [cchhccoo, hhchohcc]
+
+staircases:
+  - fill: 1
+    offsets: [[0, 4], [-4, 0], [0, -4], [4, 0]]
+    buildings:
+      staircase_bedroom: [hcho, coch]
+      staircase_piston: [chco, coch]
+      staircase_slimejump: [oooo, oooo]
+      staircase_overgrown: [ccco, cocc]
+      staircase_debris: [hhho, hohh]
+      staircase_storage: [hoho, coch]
+      staircase_spiral: [ccco, ccco]
+      staircase_shaft: [ccco, ccco]

@@ -10,7 +10,6 @@ execute if entity @e[type=armor_stand,name=multiblock,tag=!fail] run setblock -7
 {Run place command}
 
 # Multiblocks
--- multiblockFill values are based on the floor area ignoring height. Ex: both 2x1x2 and 2x2x2 have a multiblockFill of 4
 -- 1x2
 # multiblock_prison: hhocoh
 execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-10 ^3 ^6 ^3 ~ ~100 ~ all run tag @s add fail
@@ -144,7 +143,6 @@ execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:mu
 -- conditional
 scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 2
 
-
 -- 2x2
 # multiblock_training: ccoohhoo
 execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-10 ^ ^-10 ^3 ^6 ^3 ~ ~100 ~ all run tag @s add fail
@@ -266,9 +264,8 @@ execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:mu
 -- conditional
 scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 4
 
-
 # Staircases
-# staircase_bedroom: hchococh
+# staircase_bedroom: hcho coch
 execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 gold_block run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ netherite_block run tag @s add fail
@@ -287,7 +284,7 @@ execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:st
 -- conditional
 scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
 
-# staircase_piston: chcococh
+# staircase_piston: chco coch
 execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ gold_block run tag @s add fail
@@ -306,7 +303,7 @@ execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:st
 -- conditional
 scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
 
-# staircase_slimejump: oooooooo
+# staircase_slimejump: oooo oooo
 execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 diamond_block run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ diamond_block run tag @s add fail
@@ -325,7 +322,7 @@ execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:st
 -- conditional
 scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
 
-# staircase_overgrown: cccococc
+# staircase_overgrown: ccco cocc
 execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ netherite_block run tag @s add fail
@@ -344,7 +341,7 @@ execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:st
 -- conditional
 scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
 
-# staircase_debris: hhhohohh
+# staircase_debris: hhho hohh
 execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 gold_block run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ gold_block run tag @s add fail
@@ -363,7 +360,7 @@ execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:st
 -- conditional
 scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
 
-# staircase_storage: hohococh
+# staircase_storage: hoho coch
 execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 gold_block run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ diamond_block run tag @s add fail
@@ -382,7 +379,7 @@ execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:st
 -- conditional
 scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
 
-# staircase_spiral: cccoccco
+# staircase_spiral: ccco ccco
 execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ netherite_block run tag @s add fail
@@ -401,7 +398,7 @@ execute as @e[type=armor_stand,name=multiblock] at @s run place template maze:st
 -- conditional
 scoreboard players remove @e[type=armor_stand,name=multiblock,tag=!fail] multiblockFill 1
 
-# staircase_shaft: cccoccco
+# staircase_shaft: ccco ccco
 execute as @e[type=armor_stand,name=multiblock] at @s unless blocks ^-3 ^ ^-3 ^3 ^13 ^3 ~ ~100 ~ all run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^ ^ ^4 air unless block ^ ^ ^4 netherite_block run tag @s add fail
 execute as @e[type=armor_stand,name=multiblock] at @s unless block ^-4 ^ ^ air unless block ^-4 ^ ^ netherite_block run tag @s add fail

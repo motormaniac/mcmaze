@@ -17,11 +17,11 @@ The first `uv run` sets up the Python environment automatically, so there's noth
 - [mazejs/](mazejs/) - The original proof of concept for the maze generation. It's an html website.
 - [py/](py/) - Python scripts for generating commands
   - [book/](py/book/) - generating the command book
-    - [book.py](py/book/book.py) - script for generating the book command based on the input from book_command.txt
-    - [book_command.txt](py/book/book_command.txt) - a formatted list of all commands within the book
+    - [book.py](py/book/book.py) - script for generating the book command based on the input from book.yaml
+    - [book.yaml](py/book/book.yaml) - the title, author, and pages of commands within the book
   - [encode/](py/encode/) - Generate the command block encoding commands for multiblocks
-    - [encode.py](py/encode/encode.py) - This script takes the input from input.txt and rewrites output.txt
-    - [input.txt](py/encode/input.txt) - A formatted list of the data for each multiblock
+    - [encode.py](py/encode/encode.py) - This script takes the input from input.yaml and rewrites output.txt
+    - [input.yaml](py/encode/input.yaml) - The data for each multiblock and staircase, grouped by shared offsets and fill
     - [output.txt](py/encode/output.txt) - Copy pastable commands from the output
-    - [test_input.txt](py/encode/test_input.txt) - used for testing without modifying input.txt
+    - [test_input.yaml](py/encode/test_input.yaml) - used for testing without modifying input.yaml
     - [test_output.txt](py/encode/test_output.txt) - used for testing without modifying output.txt
