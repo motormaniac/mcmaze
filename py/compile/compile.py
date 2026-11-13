@@ -5,7 +5,7 @@
 
 The compiler runs in four stages:
   1. mask_comments: blank out comments (keeping every character's position)
-  2. Parser: turn the text into dataclasses (functions, globals, loops, calls, commands)
+  2. Parser: turn the text into dataclasses (functions, globals, tables, loops, calls, commands)
   3. Compiler: check names, then expand everything starting from $main
   4. collapse: tidy each finished command's whitespace
 """
@@ -23,7 +23,9 @@ NAME = r"[A-Za-z0-9_]+"
 GLOBAL_START = re.compile(rf"\$({NAME})[ \t]*=")
 CALL_START = re.compile(rf"\$({NAME})\(")
 LOOP_START = re.compile(r"for\s+\$")
-RANGE_BOUND = re.compile(rf"-?\d+|\${NAME}")
+TABLE_START = re.compile(r"table\s+\$")
+RANGE_BOUND = re.compile(rf"-?\d+|\${NAME}(?:\[[^\]\n]*\])?")
+TABLE_KEY = re.compile(rf"{NAME}|-\d+")
 INTEGER = re.compile(r"-?\d+")
 CLOSERS = {"[": "]", "{": "}", "(": ")"}
 
@@ -142,7 +144,7 @@ def mask_comments(src: Source) -> str:
 
 @dataclass
 class Value:
-  """A piece of raw text (an argument, list item or global value) and where it starts."""
+  """A piece of raw text (an argument, list item, global value or table value) and where it starts."""
   text: str
   offset: int
 
@@ -167,7 +169,7 @@ class Call:
 @dataclass
 class Bound:
   text: str
-  """an integer like -3, or a variable like $n"""
+  """an integer like -3, a variable like $n, or a table lookup like $t[0]"""
   offset: int
 
 @dataclass
@@ -195,7 +197,14 @@ class Global:
   offset: int
   value: Value
 
-type TopLevel = Func | Global | CompilerComment
+@dataclass
+class Table:
+  name: str
+  offset: int
+  entries: dict[str, Value]
+  """key -> raw value"""
+
+type TopLevel = Func | Global | Table | CompilerComment
 
 
 class Parser:
@@ -295,13 +304,13 @@ class Parser:
       i += 1
 
   def values(self, open_offset: int, never_ended: str) -> list[Value]:
-    """Reads comma separated values after an opening ( up to its closing )."""
-    self.skip_whitespace()
-    if self.char() == ")":
-      self.pos += 1
-      return []
+    """Reads comma separated values after an opening ( up to its closing ). A trailing comma is allowed."""
     values: list[Value] = []
     while True:
+      self.skip_whitespace()
+      if self.char() == ")": # () or a trailing comma
+        self.pos += 1
+        return values
       start, end = self.scan(",)", never_ended, open_offset, track_parens=True, check_lines=False)
       values.append(Value(self.text[start:end], start))
       self.pos = end + 1
@@ -318,6 +327,8 @@ class Parser:
         items.append(self.compiler_comment())
       elif self.at_word("func"):
         items.append(self.function())
+      elif self.at_word("table"):
+        items.append(self.table())
       elif GLOBAL_START.match(self.text, self.pos):
         items.append(self.global_variable())
       elif self.char() == "!":
@@ -340,6 +351,28 @@ class Parser:
     self.pos = end + 1
     return Global(name, offset, Value(self.text[start:end], start))
 
+  def table(self) -> Table:
+    self.pos += len("table")
+    self.skip_whitespace()
+    name, offset = self.read_name("expected a table name like $name after table")
+    open_offset = self.expect("(", "expected ( to start the table")
+    entries: dict[str, Value] = {}
+    for entry in self.values(open_offset, "table never closed, expected )"):
+      text = entry.text
+      start = entry.offset + len(text) - len(text.lstrip())
+      colon = text.find(":")
+      if not text.strip() or colon == -1:
+        raise self.error("expected a table entry like key: value", start)
+      key = text[:colon].strip()
+      if not TABLE_KEY.fullmatch(key):
+        raise self.error(f"table key '{key}' must be letters, digits and _, or a negative integer", start)
+      if key in entries:
+        raise self.error(f"duplicate key {key} in table ${name}", start)
+      entries[key] = Value(text[colon + 1:], entry.offset + colon + 1)
+    if not entries:
+      raise self.error(f"table ${name} is empty", offset)
+    return Table(name, offset, entries)
+
   def function(self) -> Func:
     self.pos += len("func")
     self.skip_whitespace()
@@ -347,25 +380,24 @@ class Parser:
     self.expect("(", "expected ( to start the parameter list")
     params: list[str] = []
     param_offsets: list[int] = []
-    self.skip_whitespace()
-    if self.char() == ")":
-      self.pos += 1
-    else:
-      while True:
-        self.skip_whitespace()
-        param, param_offset = self.read_name("expected a parameter like $name")
-        if param in params:
-          raise self.error(f"duplicate parameter ${param}", param_offset)
-        params.append(param)
-        param_offsets.append(param_offset)
-        self.skip_whitespace()
-        if self.char() == ",":
-          self.pos += 1
-        elif self.char() == ")":
-          self.pos += 1
-          break
-        else:
-          raise self.error("expected , or ) in the parameter list", self.pos)
+    while True:
+      self.skip_whitespace()
+      if self.char() == ")": # () or a trailing comma
+        self.pos += 1
+        break
+      param, param_offset = self.read_name("expected a parameter like $name")
+      if param in params:
+        raise self.error(f"duplicate parameter ${param}", param_offset)
+      params.append(param)
+      param_offsets.append(param_offset)
+      self.skip_whitespace()
+      if self.char() == ",":
+        self.pos += 1
+      elif self.char() == ")":
+        self.pos += 1
+        break
+      else:
+        raise self.error("expected , or ) in the parameter list", self.pos)
     open_offset = self.expect("(", "expected ( to start the function body")
     return Func(name, offset, params, param_offsets, self.body(open_offset))
 
@@ -387,6 +419,8 @@ class Parser:
       return self.modified_command()
     if self.at_word("func"):
       raise self.error("functions must be declared outside a function body", self.pos)
+    if TABLE_START.match(self.text, self.pos):
+      raise self.error("tables must be declared outside a function body", self.pos)
     if LOOP_START.match(self.text, self.pos):
       return self.loop()
     if CALL_START.match(self.text, self.pos):
@@ -486,8 +520,9 @@ class Compiler:
     self.items = items
     self.funcs: dict[str, Func] = {}
     self.globals: dict[str, Global] = {}
-    self.global_values: dict[str, str] = {}
-    self.resolving: list[str] = [] # globals being resolved, to catch cycles
+    self.tables: dict[str, Table] = {}
+    self.resolved: dict[str, str] = {} # finished global and table values, by label like $A or $t[0]
+    self.resolving: list[str] = []     # labels being resolved, to catch cycles
     self.calls: list[str] = []     # functions being expanded, to catch recursion
     self.trace: list[tuple[str, str]] = [] # (description, location), outermost first
     self.output: list[str] = []
@@ -512,12 +547,16 @@ class Compiler:
       defined[item.name] = item.offset
       if isinstance(item, Func):
         self.funcs[item.name] = item
+      elif isinstance(item, Table):
+        self.tables[item.name] = item
       else:
         self.globals[item.name] = item
     for func in self.funcs.values():
       for param, offset in zip(func.params, func.param_offsets):
         if param in self.globals:
           raise self.error(f"${param} shadows a global", offset)
+        if param in self.tables:
+          raise self.error(f"${param} shadows a table", offset)
         if param in self.funcs:
           raise self.error(f"${param} shadows a function", offset)
     main = self.funcs.get("main")
@@ -570,7 +609,7 @@ class Compiler:
     name = call.name
     func = self.funcs.get(name)
     if func is None:
-      if name in scope.params or name in scope.loops or name in self.globals:
+      if name in scope.params or name in scope.loops or name in self.globals or name in self.tables:
         raise self.error(f"${name} is not a function", call.offset)
       raise self.error(f"undefined function ${name}", call.offset)
     if name == "main":
@@ -594,6 +633,8 @@ class Compiler:
       raise self.error(f"${var} shadows a function", loop.var_offset)
     if var in self.globals:
       raise self.error(f"${var} shadows a global", loop.var_offset)
+    if var in self.tables:
+      raise self.error(f"${var} shadows a table", loop.var_offset)
     if var in scope.params:
       raise self.error(f"${var} shadows a parameter", loop.var_offset)
     if var in scope.loops:
@@ -613,7 +654,7 @@ class Compiler:
   def bound(self, bound: Bound, scope: Scope) -> int:
     if not bound.text.startswith("$"):
       return int(bound.text)
-    value = self.lookup(bound.text[1:], bound.offset, scope)
+    value = collapse(self.substitute(bound.text, bound.offset, scope))
     if not INTEGER.fullmatch(value):
       raise self.error(f"range bound '{bound.text}' is '{value}', expected an integer", bound.offset)
     return int(value)
@@ -621,6 +662,8 @@ class Compiler:
   def lookup(self, name: str, offset: int, scope: Scope) -> str:
     if name in self.funcs:
       raise self.error("functions produce commands and can't be used inside a command or value", offset)
+    if name in self.tables:
+      raise self.error(f"table ${name} needs a key, like ${name}[key]", offset)
     if name in scope.params:
       return scope.params[name]
     if name in scope.loops:
@@ -630,19 +673,40 @@ class Compiler:
     raise self.error(f"undefined variable ${name}", offset)
 
   def global_value(self, name: str, offset: int) -> str:
-    if name in self.global_values:
-      return self.global_values[name]
-    if name in self.resolving:
-      cycle = " -> ".join(f"${n}" for n in self.resolving + [name])
-      raise self.error(f"recursive global: {cycle}", offset)
-    self.resolving.append(name)
-    value = self.globals[name].value
-    self.global_values[name] = collapse(self.substitute(value.text, value.offset, EMPTY_SCOPE))
+    return self.resolve(f"${name}", "global", self.globals[name].value, offset)
+
+  def table_value(self, name: str, key: str, offset: int) -> str:
+    value = self.tables[name].entries.get(key)
+    if value is None:
+      raise self.error(f"table ${name} has no key '{key}'", offset)
+    return self.resolve(f"${name}[{key}]", "table entry", value, offset)
+
+  def resolve(self, label: str, kind: str, value: Value, offset: int) -> str:
+    """Templates a global or table value once (only globals and tables are in scope) and caches it."""
+    if label in self.resolved:
+      return self.resolved[label]
+    if label in self.resolving:
+      cycle = " -> ".join(self.resolving + [label])
+      raise self.error(f"recursive {kind}: {cycle}", offset)
+    self.resolving.append(label)
+    self.resolved[label] = collapse(self.substitute(value.text, value.offset, EMPTY_SCOPE))
     self.resolving.pop()
-    return self.global_values[name]
+    return self.resolved[label]
+
+  def key_end(self, text: str, open_index: int, offset: int) -> int:
+    """Returns the index of the ] that closes the [ at open_index."""
+    depth = 0
+    for i in range(open_index, len(text)):
+      if text[i] == "[":
+        depth += 1
+      elif text[i] == "]":
+        depth -= 1
+        if depth == 0:
+          return i
+    raise self.error("unclosed [", offset + open_index)
 
   def substitute(self, text: str, offset: int, scope: Scope) -> str:
-    """Replaces $name, ${name} and $$ in text. offset is where text starts in the file."""
+    """Replaces $name, ${name}, $table[key] and $$ in text. offset is where text starts in the file."""
     out: list[str] = []
     i = 0
     while i < len(text):
@@ -662,8 +726,16 @@ class Compiler:
         match = re.compile(NAME).match(text, i + 1)
         if match is None:
           raise self.error("expected a variable name after $", offset + i)
-        out.append(self.lookup(match[0], offset + i, scope))
-        i = match.end()
+        name = match[0]
+        if name in self.tables and text.startswith("[", match.end()):
+          close = self.key_end(text, match.end(), offset)
+          key_start = match.end() + 1
+          key = collapse(self.substitute(text[key_start:close], offset + key_start, scope))
+          out.append(self.table_value(name, key, offset + i))
+          i = close + 1
+        else:
+          out.append(self.lookup(name, offset + i, scope))
+          i = match.end()
     return "".join(out)
 
 

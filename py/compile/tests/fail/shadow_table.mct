@@ -1,0 +1,6 @@
+table $t (0: a)
+func $main () (
+  for $t in (x, y) (
+    say $t;
+  )
+)

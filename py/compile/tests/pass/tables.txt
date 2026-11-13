@@ -1,0 +1,10 @@
+setblock ~ ~0 ~ minecraft:stone
+setblock ~ ~1 ~ minecraft:white_wool
+setblock ~ ~2 ~ minecraft:stone and bob
+say "a, b" @e[type=pig,limit=1]
+say bobEnd
+kill @e[type=pig,limit=1][tag=x]
+say "alice"
+say 1
+say 2
+kill @e[type=cow]

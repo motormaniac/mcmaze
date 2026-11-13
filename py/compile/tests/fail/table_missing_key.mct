@@ -1,0 +1,6 @@
+table $t (0: a, 1: b)
+func $main () (
+  for $i in 0..2 (
+    say $t[$i];
+  )
+)

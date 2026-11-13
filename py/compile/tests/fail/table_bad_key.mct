@@ -1,0 +1,6 @@
+table $t (
+  two words: a
+)
+func $main () (
+  say hi;
+)

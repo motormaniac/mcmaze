@@ -1,0 +1,1 @@
+table_bad_key.mct:2:3: table key 'two words' must be letters, digits and _, or a negative integer

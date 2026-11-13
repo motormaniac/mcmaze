@@ -1,0 +1,1 @@
+table_cycle.mct:3:6: recursive table entry: $t[0] -> $t[1] -> $t[0]

@@ -1,0 +1,1 @@
+table_without_key.mct:3:7: table $t needs a key, like $t[key]

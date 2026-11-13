@@ -1,0 +1,3 @@
+table_missing_key.mct:4:9: table $t has no key '2'
+  in for $i = 2   at table_missing_key.mct:3
+  in $main        at table_missing_key.mct:2

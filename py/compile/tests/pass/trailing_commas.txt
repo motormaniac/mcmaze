@@ -1,0 +1,3 @@
+say a
+say b
+say @e[type=pig,limit=1] "c, d"

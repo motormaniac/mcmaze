@@ -1,0 +1,19 @@
+-- a trailing comma is allowed in tables, lists, arguments and parameters
+table $t (
+  0: a,
+  1: b,
+)
+
+func $pair ($x, $y,) (
+  say $x $y;
+)
+
+func $main () (
+  for $i in (0, 1,) (
+    say $t[$i];
+  )
+  $pair(
+    @e[type=pig,limit=1],
+    "c, d",
+  );
+)

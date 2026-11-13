@@ -1,0 +1,5 @@
+$t = hi;
+table $t (0: a)
+func $main () (
+  say $t;
+)

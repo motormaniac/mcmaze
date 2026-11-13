@@ -1,0 +1,7 @@
+table $t (
+  0: a,
+  b
+)
+func $main () (
+  say hi;
+)

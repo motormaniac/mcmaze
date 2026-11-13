@@ -1,0 +1,36 @@
+-- keys are names or integers; values are raw text like globals and can contain :
+$WOOL = minecraft:white_wool;
+table $blocks (
+  0: minecraft:stone,
+  1: $WOOL,
+  north: "a, b",
+  -1: @e[type=pig,limit=1],
+  2: $blocks[0] and $names[$KEY]
+)
+$KEY = first;
+table $names (first: bob, second: alice)
+
+func $main () (
+  for $i in 0..2 (
+    setblock ~ ~$i ~ $blocks[$i];
+  )
+  say $blocks[north] $blocks[-1];
+  -- ] ends the lookup, so text can follow directly
+  say $names[first]End;
+  -- only the first [...] is a lookup
+  kill $blocks[-1][tag=x];
+  -- a lookup can be a whole command, and can be a range bound
+  $show($names[second]);
+  for $j in $SIZE[0]..$SIZE[1] (
+    say $j;
+  )
+  -- [ after a variable that isn't a table is plain text
+  kill $SEL[type=cow];
+)
+
+table $SIZE (0: 1, 1: 2)
+$SEL = @e;
+
+func $show ($who) (
+  say "$who";
+)

@@ -50,7 +50,7 @@ Semicolons and commas inside quotes, `[ ]` or `{ }` don't count, so NBT and stri
 
 ## Statements
 
-Outside a function body, a file can only contain functions, globals, comments and compiler comments. Inside a body, each statement is recognized by how it starts:
+Outside a function body, a file can only contain functions, globals, tables, comments and compiler comments. Inside a body, each statement is recognized by how it starts:
 
 | Starts with | Statement |
 |---|---|
@@ -61,7 +61,7 @@ Outside a function body, a file can only contain functions, globals, comments an
 | `$name(` (no space) | function call |
 | anything else | command, read until `;` |
 
-`for` and `func` only count as whole words, so `function maze:build;` is a command.
+`for`, `func` and `table` only count as whole words, so `function maze:build;` is a command.
 
 ## Variables
 
@@ -85,6 +85,34 @@ Global variables are defined outside functions. Values are raw text, trimmed. Qu
     -- produces:
     say "hello world" from me
 
+## Tables
+A table maps keys to values, like a dictionary. Tables are defined outside functions, in any order. Entries split on commas the same way as arguments. Each entry is `key: value`, split at the first `:`, so values like `minecraft:stone` work. Keys are letters, digits and `_`, or a negative integer. Values are raw text, trimmed, like a global's, and can use globals and other tables.
+
+    table $blocks (
+      0: minecraft:stone,
+      1: $WOOL,
+      north: "a, b"
+    )
+
+Look up a value with `$table[key]`. The key is templated first, so `$blocks[$i]` works. The `]` ends the lookup, so text can follow directly, and only the first `[...]` is a lookup.
+
+    for $i in 0..1 (
+      setblock ~ ~$i ~ $blocks[$i];
+    )
+    say $blocks[north]End;
+    kill $TARGET[0][tag=x];
+    -- produces (with $WOOL = minecraft:white_wool; and $TARGET[0] = @e):
+    setblock ~ ~0 ~ minecraft:stone
+    setblock ~ ~1 ~ minecraft:white_wool
+    say "a, b"End
+    kill @e[tag=x]
+
+Rules:
+- A `[` only starts a lookup after a table name. After any other variable it's plain text, so `$SEL[type=pig]` with `$SEL = @e;` gives `@e[type=pig]`.
+- A table can't be used without a key: `$blocks` and `${blocks}` are errors. There's no braced form, since the `]` already ends the lookup.
+- A missing key, a duplicate key, an empty table, and an entry without a `:` are errors.
+- Lookups work anywhere a variable does: commands, arguments, list items, range bounds, compiler comments, globals and other table values.
+
 ## Functions
 Functions are more like templates. When expanded, the argument values replace the references. Arguments and function names are defined using $.
 
@@ -93,7 +121,7 @@ Functions are more like templates. When expanded, the argument values replace th
       execute as $arg2 run say hello;
     )
 
-Funcs are called inside a body using $syntax. Arguments split on commas outside quotes, brackets and parentheses, so selectors, NBT and strings work as-is.
+Funcs are called inside a body using $syntax. Arguments split on commas outside quotes, brackets and parentheses, so selectors, NBT and strings work as-is. A trailing comma is allowed in arguments, parameters, loop lists and tables.
 
     $example_func(@e[type=pig,limit=1], bob);
 
@@ -107,8 +135,8 @@ Rules:
 - Calling with the wrong number of arguments is an error.
 - Recursion (direct or through other functions) is an error.
 - A call can't be used inside a command: `say $f();` is an error.
-- Scope is lexical. A body can only see its own parameters, its loop variables and globals.
-- No shadowing: a parameter or loop variable can't reuse the name of a global, a parameter, or a loop variable it's nested in. Functions and globals share names, so they can't match either.
+- Scope is lexical. A body can only see its own parameters, its loop variables, globals and tables.
+- No shadowing: a parameter or loop variable can't reuse the name of a global, a table, a parameter, or a loop variable it's nested in. Functions, globals and tables share names, so they can't match either.
 
         func $main () (
           for $i in 0..3 (
