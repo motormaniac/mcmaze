@@ -1,7 +1,7 @@
 """Compiles a .mct template file into IR, one command per line. See LANG.md.
 
   cd py
-  uv run compile/compile.py in/walls.mct    -- writes compile/out/walls.txt
+  uv run compile/compile.py compile/in/walls.mct    -- writes compile/ir/walls.txt
 
 The compiler runs in four stages:
   1. mask_comments: blank out comments (keeping every character's position)
@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 MODIFIERS = ("conditional", "needs_redstone") # also the order they're written in the IR
-OUT_DIR = Path(__file__).with_name("out")
+IR_DIR = Path(__file__).with_name("ir")
 
 NAME = r"[A-Za-z0-9_]+"
 GLOBAL_START = re.compile(rf"\$({NAME})[ \t]*=")
@@ -690,8 +690,8 @@ def main(argv: list[str]) -> int:
   except CompileError as e:
     print(e, file=sys.stderr)
     return 1
-  OUT_DIR.mkdir(exist_ok=True)
-  out_path = OUT_DIR / f"{path.stem}.txt"
+  IR_DIR.mkdir(exist_ok=True)
+  out_path = IR_DIR / f"{path.stem}.txt"
   out_path.write_text(ir, encoding="utf-8", newline="\n")
   print(f"wrote {out_path}")
   return 0

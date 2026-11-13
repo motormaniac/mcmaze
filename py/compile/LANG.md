@@ -1,10 +1,12 @@
 # Define the templating language
 
-`compile.py` turns a `.mct` file into IR. `schem.py` (planned separately) turns the IR into a WorldEdit schematic.
+`compile.py` turns a `.mct` file into IR. `schem.py` turns the IR (or a `.mct` file directly) into a WorldEdit schematic. Sources go in `compile/in/`, IR goes to `compile/ir/` and schematics go to `compile/out/`.
 
     cd py
-    uv run compile/compile.py in/walls.mct
-    -- writes compile/out/walls.txt
+    uv run compile/compile.py compile/in/walls.mct
+    -- writes compile/ir/walls.txt
+    uv run compile/schem.py compile/in/walls.mct
+    -- writes compile/out/walls.schem
 
 One `.mct` file is one command chain, which becomes one schematic. Every command is a chain command block.
 
@@ -166,7 +168,7 @@ Every command is an unconditional, always active chain command block by default.
     $talk(cat);   -- error: ! can't go before a call
 
 ## Compiler Comments
-Compiler comments start with `#--`. They can go anywhere, are templated, and are kept in the IR (`schem.py` ignores them). They show up in the IR in the same order relative to the commands. Top-level ones are ordered around `func $main`: the ones above it come before its commands, and the ones below come after.
+Compiler comments start with `#--`. They can go anywhere, are templated, and are kept in the IR. `schem.py` writes each one on a sign above the command below it. They show up in the IR in the same order relative to the commands. Top-level ones are ordered around `func $main`: the ones above it come before its commands, and the ones below come after.
 
     #-- start
     func $main () (
@@ -230,14 +232,14 @@ The compiler stops at the first error. Errors show the file, line and column, an
 
 # IR (Intermediate Representation)
 
-The IR is what `compile.py` writes to `compile/out/<name>.txt` and what `schem.py` reads. It's one command chain, written as plain text with one item per line. It isn't meant to be written by hand, so it's whitespace sensitive.
+The IR is what `compile.py` writes to `compile/ir/<name>.txt` and what `schem.py` reads. It's one command chain, written as plain text with one item per line. It isn't meant to be written by hand, so it's whitespace sensitive.
 
 ## Lines
 Every line is one of three kinds, decided by how it starts:
 
 | Starts with | Line | Meaning |
 |---|---|---|
-| `#--` | compiler comment | free text, ignored by `schem.py` |
+| `#--` | compiler comment | free text, shown on a sign above the next command |
 | `!` | modifier | changes the command on the next line |
 | anything else | command | one chain command block |
 

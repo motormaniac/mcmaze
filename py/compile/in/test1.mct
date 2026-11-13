@@ -1,0 +1,7 @@
+func $main () (
+  for $i in 0..400 (
+    #-- iter: $i
+    say $i;
+    say "comment";
+  )
+)
