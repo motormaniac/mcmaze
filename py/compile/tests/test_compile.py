@@ -1,6 +1,6 @@
 """Runs every example in tests/pass and tests/fail through the compiler.
 
-pass/<name>.mct must compile to exactly pass/<name>.txt.
+pass/<name>.mct must compile to exactly pass/<name>.irt.
 fail/<name>.mct must raise CompileError, and fail/<name>.err holds the expected error:
   - the first line must match exactly
   - any other lines are the expected expansion trace (spacing is ignored)
@@ -25,7 +25,7 @@ def squash(line: str) -> str:
 
 @pytest.mark.parametrize("source", PASS, ids=lambda p: p.stem)
 def test_pass(source: Path) -> None:
-  expected = source.with_suffix(".txt").read_text()
+  expected = source.with_suffix(".irt").read_text()
   assert compile_source(source.read_text(), source.name) == expected
 
 

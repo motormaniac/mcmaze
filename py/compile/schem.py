@@ -1,15 +1,15 @@
-"""Turns IR (or a .mct file) into a WorldEdit schematic of chain command blocks. See LANG.md.
+"""Turns IR into a WorldEdit schematic of chain command blocks. See LANG.md. Run it through main.py:
 
   cd py
-  uv run compile/schem.py compile/in/walls.mct    -- writes compile/out/walls.schem
-  uv run compile/schem.py compile/ir/walls.txt    -- same, starting from IR
-  options: --width 16  --gap 3  --track-output
+  uv run compile/main.py compile/ir/walls.irt     -- writes compile/out/walls.schem
+  uv run compile/main.py compile/in/walls.mct     -- same, compiling the .mct first
+  options: --width 16  --length 16  --gap 3  --track-output
 
 Output is a Sponge v3 .schem for Minecraft 1.21.10. Every block is a chain command block, and the
 origin (where //paste puts it) is the first one. Place your own trigger block just west of it, facing east.
 
-Layout: the chain snakes across a width x width layer. Row 0 runs east, and each row end turns 180
-degrees into the next row (rows advance south). A layer's last corner is the bottom of a bridge: it
+Layout: the chain snakes across a width x length layer: `length` rows, each `width` blocks long. Row 0
+runs east, and each row end turns 180 degrees into the next row (rows advance south). A layer's last corner is the bottom of a bridge: it
 and the `gap` blocks above it are empty chain blocks facing up, and the next layer starts directly
 above, mirrored so its rows advance north.
 
@@ -21,21 +21,15 @@ Compiler comments (#--) label the command below them with a waxed oak sign on to
 front facing west, with glowing text. The text is word-wrapped onto the front's 4 lines, then the back's, and cut off
 after that. Comments after the last command have nothing to label and are dropped.
 
-The schematic always covers the full width x width footprint, plus a row for signs above the top
+The schematic always covers the full width x length footprint, plus a row for signs above the top
 layer, and has a marker block in the +x +y +z corner so both corners can be clicked for //pos.
 """
 
-import argparse
-import sys
 from dataclasses import dataclass
-from pathlib import Path
 
 import nbtlib
 from nbtlib.tag import ByteArray, Byte, Compound, Int, IntArray, List, Short, String
 
-from compile import CompileError, compile_source
-
-OUT_DIR = Path(__file__).with_name("out")
 DATA_VERSION = 4556 # Minecraft 1.21.10
 SPONGE_VERSION = 3
 AIR = "minecraft:air"
@@ -148,32 +142,32 @@ def parse_ir(text: str, filename: str) -> list[Command]:
 
 # ---- layout ----
 
-def slot_at(i: int, width: int, gap: int) -> Slot:
+def slot_at(i: int, width: int, length: int, gap: int) -> Slot:
   """Where the i-th block of the snake goes. Each block faces the next one."""
-  cells = width * width
+  cells = width * length
   layer, k = divmod(i, cells + gap)
   y = layer * (gap + 1)
   if k >= cells: # bridge column above this layer's last corner
-    x, _, z = slot_at(layer * (cells + gap) + cells - 1, width, gap).pos
+    x, _, z = slot_at(layer * (cells + gap) + cells - 1, width, length, gap).pos
     return Slot((x, y + 1 + k - cells, z), "up", True)
 
   row, j = divmod(k, width)
-  east = (layer * width + row) % 2 == 0 # direction alternates every row, across layers too
+  east = (layer * length + row) % 2 == 0 # direction alternates every row, across layers too
   forward = layer % 2 == 0 # even layers advance south, odd layers north
   x = j if east else width - 1 - j
-  z = row if forward else width - 1 - row
+  z = row if forward else length - 1 - row
   if j < width - 1:
     return Slot((x, y, z), "east" if east else "west", False)
-  if row < width - 1:
+  if row < length - 1:
     return Slot((x, y, z), "south" if forward else "north", False)
   return Slot((x, y, z), "up", True) # the last corner starts the bridge, so a sign never goes under it
 
-def conditional_ok(i: int, width: int, gap: int) -> bool:
+def conditional_ok(i: int, width: int, length: int, gap: int) -> bool:
   """True if a conditional block at slot i would check slot i - 1, the block that feeds it."""
-  slot = slot_at(i, width, gap)
+  slot = slot_at(i, width, length, gap)
   dx, dy, dz = FACING[slot.facing]
   x, y, z = slot.pos
-  feeder = slot_at(i - 1, width, gap).pos if i > 0 else TRIGGER_POS
+  feeder = slot_at(i - 1, width, length, gap).pos if i > 0 else TRIGGER_POS
   return not slot.connector and (x - dx, y - dy, z - dz) == feeder
 
 def split_groups(commands: list[Command]) -> list[list[Command]]:
@@ -187,14 +181,14 @@ def split_groups(commands: list[Command]) -> list[list[Command]]:
       groups.append([command])
   return groups
 
-def layout(commands: list[Command], width: int, gap: int, filename: str) -> list[Block]:
+def layout(commands: list[Command], width: int, length: int, gap: int, filename: str) -> list[Block]:
   """Places every command along the snake, padding before a group when a conditional would land
   on a turn. Raises SchemError if a run of conditionals is too long to ever fit in a row."""
   def next_cells(start: int, count: int) -> list[int]:
     cells: list[int] = []
     i = start
     while len(cells) < count:
-      if not slot_at(i, width, gap).connector:
+      if not slot_at(i, width, length, gap).connector:
         cells.append(i)
       i += 1
     return cells
@@ -220,7 +214,7 @@ def layout(commands: list[Command], width: int, gap: int, filename: str) -> list
 
     while True:
       cells = next_cells(i, len(group))
-      if all(conditional_ok(c, width, gap) for c, command in zip(cells, group) if command.conditional):
+      if all(conditional_ok(c, width, length, gap) for c, command in zip(cells, group) if command.conditional):
         break
       assert not group[0].conditional, "a leading conditional always fits at slot 0"
       i = cells[0] + 1 # cells[0] becomes padding
@@ -229,7 +223,7 @@ def layout(commands: list[Command], width: int, gap: int, filename: str) -> list
 
   blocks: list[Block] = []
   for i in range(max(placed) + 1):
-    slot = slot_at(i, width, gap)
+    slot = slot_at(i, width, length, gap)
     blocks.append(Block(slot.pos, slot.facing, placed.get(i, EMPTY)))
   return blocks
 
@@ -313,10 +307,9 @@ def command_entity(block: Block, track_output: bool) -> Compound:
     }),
   })
 
-def schematic(blocks: list[Block], width: int, gap: int, track_output: bool = False) -> nbtlib.File:
+def schematic(blocks: list[Block], width: int, length: int, gap: int, track_output: bool = False) -> nbtlib.File:
   """Builds a Sponge v3 schematic. The first block must be at (0, 0, 0), the minimum corner. It
-  covers the full width x width footprint, up to the sign row above the top layer."""
-  length = width
+  covers the full width x length footprint, up to the sign row above the top layer."""
   height = max(b.pos[1] for b in blocks) + 1 + (gap > 0) # signs need gap > 0, so there's no row without one
 
   palette = {AIR: 0}
@@ -350,49 +343,3 @@ def schematic(blocks: list[Block], width: int, gap: int, track_output: bool = Fa
       "BlockEntities": List[Compound](entities),
     }),
   })}, gzipped=True)
-
-
-# ---- CLI ----
-
-def main(argv: list[str]) -> int:
-  parser = argparse.ArgumentParser(prog="uv run compile/schem.py",
-    description="Turn a .mct file or its IR (.txt) into a WorldEdit schematic.")
-  parser.add_argument("file", type=Path, help="a .mct file, or IR from compile.py (.txt)")
-  parser.add_argument("--width", type=int, default=16, help="side length of each square layer (default 16)")
-  parser.add_argument("--gap", type=int, default=3, help="empty blocks between layers (default 3)")
-  parser.add_argument("--track-output", action="store_true", help="have command blocks keep their last output")
-  args = parser.parse_args(argv)
-
-  path: Path = args.file
-  if args.width < 2:
-    parser.error("--width must be at least 2")
-  if args.gap < 0:
-    parser.error("--gap must be at least 0")
-  if path.suffix not in (".mct", ".txt"):
-    print(f"{path}: expected a .mct or .txt file", file=sys.stderr)
-    return 2
-  if not path.is_file():
-    print(f"{path}: file not found", file=sys.stderr)
-    return 2
-
-  try:
-    if path.suffix == ".mct":
-      ir = compile_source(path.read_text(encoding="utf-8"), path.name)
-    else:
-      ir = path.read_bytes().decode("utf-8") # read_text would translate \r\n
-    commands = parse_ir(ir, path.name)
-    blocks = layout(commands, args.width, args.gap, path.name)
-  except (CompileError, SchemError) as e:
-    print(e, file=sys.stderr)
-    return 1
-
-  OUT_DIR.mkdir(exist_ok=True)
-  out_path = OUT_DIR / f"{path.stem}.schem"
-  schematic(blocks, args.width, args.gap, args.track_output).save(out_path)
-  empty = len(blocks) - len(commands)
-  signs = sum(bool(c.comments) for c in commands)
-  print(f"wrote {out_path} ({len(commands)} commands, {empty} empty blocks, {signs} signs)")
-  return 0
-
-if __name__ == "__main__":
-  sys.exit(main(sys.argv[1:]))

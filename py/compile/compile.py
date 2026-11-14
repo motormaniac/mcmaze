@@ -1,7 +1,8 @@
 """Compiles a .mct template file into IR, one command per line. See LANG.md.
+Run it through main.py:
 
   cd py
-  uv run compile/compile.py compile/in/walls.mct    -- writes compile/ir/walls.txt
+  uv run compile/main.py --ir compile/in/walls.mct  -- writes compile/ir/walls.irt
 
 The compiler runs in four stages:
   1. mask_comments: blank out comments (keeping every character's position)
@@ -11,14 +12,11 @@ The compiler runs in four stages:
 """
 
 import re
-import sys
 from bisect import bisect_right
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from pathlib import Path
 
 MODIFIERS = ("conditional", "needs_redstone") # also the order they're written in the IR
-IR_DIR = Path(__file__).with_name("ir")
 
 NAME = r"[A-Za-z0-9_]+"
 GLOBAL_START = re.compile(rf"\$({NAME})[ \t]*=")
@@ -846,28 +844,3 @@ def compile_source(source: str, filename: str) -> str:
   src = Source(text, filename)
   items = Parser(src, mask_comments(src)).parse_file()
   return Compiler(src, items).run()
-
-def main(argv: list[str]) -> int:
-  if len(argv) != 1:
-    print("usage: uv run compile/compile.py <file.mct>", file=sys.stderr)
-    return 2
-  path = Path(argv[0])
-  if path.suffix != ".mct":
-    print(f"{path}: expected a .mct file", file=sys.stderr)
-    return 2
-  if not path.is_file():
-    print(f"{path}: file not found", file=sys.stderr)
-    return 2
-  try:
-    ir = compile_source(path.read_text(encoding="utf-8"), path.name)
-  except CompileError as e:
-    print(e, file=sys.stderr)
-    return 1
-  IR_DIR.mkdir(exist_ok=True)
-  out_path = IR_DIR / f"{path.stem}.txt"
-  out_path.write_text(ir, encoding="utf-8", newline="\n")
-  print(f"wrote {out_path}")
-  return 0
-
-if __name__ == "__main__":
-  sys.exit(main(sys.argv[1:]))
