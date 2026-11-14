@@ -34,6 +34,9 @@ uv run poe mct maze2.mct                         # same thing, from inside compi
   - [book/](py/book/) - generating the command book
     - [book.py](py/book/book.py) - script for generating the book command based on the input from book.yaml
     - [book.yaml](py/book/book.yaml) - the title, author, and pages of commands within the book
+  - [rooms/](py/rooms/) - maze2 room data
+    - [rooms.py](py/rooms/rooms.py) - downloads the room sheet (or reads any CSV export of it) and writes `compile/ir/lookups.irt` (summons the lookup entities) and `compile/ir/place.irt` (places each graph node's structure). Run with `uv run poe rooms` or `uv run poe rooms some.csv`
+    - [rooms.csv](py/rooms/rooms.csv) - the last download of the sheet's Chart tab
   - [encode/](py/encode/) - Generate the command block encoding commands for multiblocks
     - [encode.py](py/encode/encode.py) - This script takes the input from input.yaml and rewrites output.txt
     - [input.yaml](py/encode/input.yaml) - The data for each multiblock and staircase, grouped by shared offsets and fill

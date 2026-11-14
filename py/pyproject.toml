@@ -20,3 +20,4 @@ testpaths = ["compile/tests", "sim/tests"]
 
 [tool.poe.tasks]
 mct = { cmd = "python ${POE_ROOT}/compile/main.py", cwd = "${POE_PWD}", help = "Compile .mct to IR (.irt) and build schematics; --ir writes IR, --schem a schematic" }
+rooms = { cmd = "python ${POE_ROOT}/rooms/rooms.py", cwd = "${POE_PWD}", help = "Build the maze2 lookups/place IR from the room sheet; no file downloads the sheet to rooms/rooms.csv first" }
