@@ -1,0 +1,44 @@
+-- inline loops: repeat text inside one command
+$N = 3;
+$DASH = -;
+
+func $main () (
+  -- joined with spaces, and a lone ) line doesn't end the command
+  execute as @e[tag=lookup]
+    for $k in 1..$N (
+      unless score @s north = .target$k var
+    )
+    run say no match;
+
+  -- sep goes between items only, and each repetition is trimmed
+  kill @e[for $t in (a, b, c) sep "," (   tag=!$t   )];
+  say [for $i in 1..3 sep ", " ( "t$i" )];
+  say for $i in 1..2 sep '$DASH' ( $i );
+  say for $i in 3..1 sep "" ( $i );
+
+  -- nested, and using variables from around the command
+  for $row in 0..1 (
+    say for $a in (x, y) ( for $b in 1..2 sep "-" ( $row$a$b ) );
+  )
+  $show(5);
+
+  -- balanced parens and quoted parens are fine in the body
+  say for $i in 1..2 ( ($i) ":)" );
+  -- ; inside brackets doesn't count
+  say for $i in 1..2 ( [I;$i] );
+  -- an empty list repeats nothing
+  say [for $x in () ( $x )];
+
+  -- for that isn't a full loop header stays text
+  say thanks for $$name;
+  for $who in (bob) (
+    say waiting for $who in (the lobby);
+    say for $who in 1..2 later;
+  )
+  say "for $N in 1..2 ( x )";
+  say platform $N in 1..2 ( x );
+)
+
+func $show ($n) (
+  say for $i in $n..6 ( $n:$i );
+)

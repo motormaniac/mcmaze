@@ -1,0 +1,3 @@
+inline_loop_undefined.mct:2:24: undefined variable $kk
+  in for $k = 1   at inline_loop_undefined.mct:2
+  in $main        at inline_loop_undefined.mct:1

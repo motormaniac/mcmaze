@@ -183,6 +183,34 @@ Allow for for loops to iterate through an array of terms. Items split the same w
     say dog
     say @e[type=rabbit,limit=1]
 
+### Inline loops
+
+A loop inside a command repeats text within that one command instead of making more commands. It's written the same way, but its body is text, not statements. Each repetition is trimmed, and they're joined with a single space.
+
+    execute as @e[tag=lookup]
+      for $k in 1..3 (
+        unless score @s north = .target$k var
+      )
+      run say no match;
+    -- produces:
+    execute as @e[tag=lookup] unless score @s north = .target1 var unless score @s north = .target2 var unless score @s north = .target3 var run say no match
+
+Add `sep` and a quoted string after the range or list to join with something else. The quotes are removed, variables inside it are replaced, and it only goes between repetitions, never after the last one.
+
+    kill @e[for $t in (a, b, c) sep "," ( tag=!$t )];
+    say [for $i in 1..3 sep ", " ( "t$i" )];
+    -- produces:
+    kill @e[tag=!a,tag=!b,tag=!c]
+    say ["t1", "t2", "t3"]
+
+Rules:
+- `for` only starts an inline loop when it's a whole word and the whole header matches: `for $var in <range or (list)>`, an optional `sep "..."`, then `(`. Otherwise it's plain text, so `say waiting for $name in (the lobby);` is just a command.
+- Inline loops work anywhere in a command, including inside `[ ]` and `{ }`, but not inside quotes. `say "for $i in 1..2 ( x )";` is plain text.
+- The body ends at the matching `)`, so parentheses in it must balance unless they're quoted: `( say ":)" )`. A `)` alone on its own line is fine inside a body.
+- A `;` in the body (outside `[ ]` and `{ }`) is an error, since it almost always means a missing `)`.
+- Inline loops can be nested and follow the same scope and shadowing rules as other loops. They can use the parameters and loop variables around the command.
+- `sep` only works on inline loops. Using it on a loop that holds statements is an error.
+
 ## Command Block Modifiers
 
 Every command is an unconditional, always active chain command block by default. A `!` line changes the command directly after it. It ends at the newline and can use `conditional`, `needs_redstone`, or both in any order. The IR always writes them as `!conditional, needs_redstone`. It can't go before a call or loop, so put it inside the body instead.

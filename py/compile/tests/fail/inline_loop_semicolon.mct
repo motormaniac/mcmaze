@@ -1,0 +1,3 @@
+func $main () (
+  execute for $i in 1..2 ( say $i; ) run say hi;
+)

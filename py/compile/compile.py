@@ -13,6 +13,7 @@ The compiler runs in four stages:
 import re
 import sys
 from bisect import bisect_right
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -150,7 +151,8 @@ class Value:
 
 @dataclass
 class Command:
-  text: str
+  parts: list[Piece]
+  """the command's text, split around its inline loops"""
   offset: int
   modifiers: list[str] = field(default_factory=list[str])
 
@@ -173,13 +175,32 @@ class Bound:
   offset: int
 
 @dataclass
-class For:
+class LoopHeader:
+  """The `for $var in <range or list> [sep "..."]` part, shared by both kinds of loop."""
   var: str
   var_offset: int
   for_offset: int
   range: tuple[Bound, Bound] | None
   items: list[Value] | None
+  sep: Value | None
+  """the text inside the quotes after sep"""
+  sep_offset: int
+
+@dataclass
+class For:
+  """A loop that starts a statement. Its body is statements."""
+  header: LoopHeader
   body: list[Statement]
+
+@dataclass
+class InlineFor:
+  """A loop inside a command. Its body is text, and the repetitions are joined into the command."""
+  header: LoopHeader
+  body: list[Piece]
+  end: int
+  """index just after the ) that closes the body"""
+
+type Piece = Value | InlineFor
 
 type Statement = Command | CompilerComment | Call | For
 
@@ -248,10 +269,13 @@ class Parser:
     line = self.text[start:] if end == -1 else self.text[start:end]
     return line.strip() == ")" or re.match(r"\s*func\s", line + " ") is not None
 
-  def scan(self, stops: str, never_ended: str, never_ended_offset: int, track_parens: bool, check_lines: bool) -> tuple[int, int]:
+  def scan(self, stops: str, never_ended: str, never_ended_offset: int, track_parens: bool, check_lines: bool,
+           loops: list[InlineFor] | None = None, loop_body: bool = False) -> tuple[int, int]:
     """
     Scans raw text until a stop character that isn't inside quotes or brackets.
     Returns (start, end) of the text and leaves pos on the stop character.
+    With loops, inline loops are parsed (and skipped over) and added to the list.
+    With loop_body, a ; outside [ ] and { } means the loop was never closed.
     """
     text = self.text
     openers = "[{(" if track_parens else "[{"
@@ -284,6 +308,12 @@ class Parser:
           raise self.error("unclosed ${", i)
         i = match.end()
         continue
+      if loops is not None and self.at_inline_loop(i):
+        loop = self.inline_loop(i)
+        if loop is not None:
+          loops.append(loop)
+          i = loop.end
+          continue
       if c in openers:
         stack.append((c, i))
       elif c in closers:
@@ -296,6 +326,8 @@ class Parser:
         if c != expected:
           raise self.error(f"expected {expected} but found {c}", i)
         stack.pop()
+      elif c == ";" and loop_body and not any(bracket in "[{" for bracket, _ in stack):
+        raise not_ended()
       elif c in stops and not stack:
         self.pos = i
         return start, i
@@ -455,6 +487,49 @@ class Parser:
     return statement
 
   def loop(self) -> For:
+    header = self.loop_header()
+    if header.sep is not None:
+      raise self.error("sep only works on a loop inside a command", header.sep_offset)
+    open_offset = self.expect("(", "expected ( to start the loop body")
+    return For(header, self.body(open_offset))
+
+  def at_inline_loop(self, i: int) -> bool:
+    """True when a whole word for starts at i (not part of a name like platform or $for)."""
+    text = self.text
+    before = text[i - 1] if i > 0 else " "
+    return text.startswith("for", i) and not is_name_char(before) and before != "$" and text[i + 3:i + 4].isspace()
+
+  def inline_loop(self, start: int) -> InlineFor | None:
+    """
+    Parses the inline loop at start, or returns None if its header doesn't match,
+    in which case the for is just text. Leaves pos where it was.
+    """
+    saved = self.pos
+    self.pos = start
+    try:
+      header = self.loop_header()
+      self.expect("(", "expected ( to start the loop body")
+    except CompileError:
+      self.pos = saved
+      return None
+    loops: list[InlineFor] = []
+    body_start, body_end = self.scan(")", "inline loop never closed, expected )", start,
+                                     track_parens=True, check_lines=False, loops=loops, loop_body=True)
+    self.pos = saved
+    return InlineFor(header, self.pieces(body_start, body_end, loops), body_end + 1)
+
+  def pieces(self, start: int, end: int, loops: list[InlineFor]) -> list[Piece]:
+    """Splits text[start:end] into plain text and the inline loops inside it."""
+    parts: list[Piece] = []
+    pos = start
+    for loop in loops:
+      parts.append(Value(self.text[pos:loop.header.for_offset], pos))
+      parts.append(loop)
+      pos = loop.end
+    parts.append(Value(self.text[pos:end], pos))
+    return parts
+
+  def loop_header(self) -> LoopHeader:
     for_offset = self.pos
     self.pos += len("for")
     self.skip_whitespace()
@@ -478,8 +553,18 @@ class Parser:
       self.pos += 2
       self.skip_whitespace()
       loop_range = (low, self.bound())
-    open_offset = self.expect("(", "expected ( to start the loop body")
-    return For(var, var_offset, for_offset, loop_range, items, self.body(open_offset))
+    self.skip_whitespace()
+    sep: Value | None = None
+    sep_offset = self.pos
+    if self.text.startswith("sep", self.pos) and self.text[self.pos + 3:self.pos + 4].isspace():
+      self.pos += len("sep")
+      self.skip_whitespace()
+      end = string_end(self.text, self.pos) if self.char() in ("\"", "'") else None
+      if end is None:
+        raise self.error("expected a quoted separator like sep \",\"", self.pos)
+      sep = Value(self.text[self.pos + 1:end - 1], self.pos + 1)
+      self.pos = end
+    return LoopHeader(var, var_offset, for_offset, loop_range, items, sep, sep_offset)
 
   def bound(self) -> Bound:
     match = RANGE_BOUND.match(self.text, self.pos)
@@ -498,9 +583,10 @@ class Parser:
 
   def command(self) -> Command:
     offset = self.pos
-    start, end = self.scan(";", "command never ended, expected ;", offset, track_parens=False, check_lines=True)
+    loops: list[InlineFor] = []
+    start, end = self.scan(";", "command never ended, expected ;", offset, track_parens=False, check_lines=True, loops=loops)
     self.pos = end + 1
-    return Command(self.text[start:end], start)
+    return Command(self.pieces(start, end, loops), start)
 
 
 # ---------- Expansion ----------
@@ -585,7 +671,7 @@ class Compiler:
     for statement in body:
       match statement:
         case Command():
-          text = collapse(self.substitute(statement.text, statement.offset, scope))
+          text = collapse(self.expand(statement.parts, scope))
           if not text:
             raise self.error("empty command", statement.offset)
           if text.startswith(("!", "#--")):
@@ -628,28 +714,43 @@ class Compiler:
     self.trace.pop()
 
   def loop(self, loop: For, scope: Scope) -> None:
-    var = loop.var
+    for inner in self.iterations(loop.header, scope):
+      self.run_body(loop.body, inner)
+
+  def inline_loop(self, loop: InlineFor, scope: Scope) -> str:
+    sep = loop.header.sep
+    joiner = " " if sep is None else self.substitute(sep.text, sep.offset, scope)
+    return joiner.join(self.expand(loop.body, inner).strip() for inner in self.iterations(loop.header, scope))
+
+  def iterations(self, header: LoopHeader, scope: Scope) -> Iterator[Scope]:
+    """Yields the scope for each pass of a loop, with the pass on the trace while it runs."""
+    var = header.var
     if var in self.funcs:
-      raise self.error(f"${var} shadows a function", loop.var_offset)
+      raise self.error(f"${var} shadows a function", header.var_offset)
     if var in self.globals:
-      raise self.error(f"${var} shadows a global", loop.var_offset)
+      raise self.error(f"${var} shadows a global", header.var_offset)
     if var in self.tables:
-      raise self.error(f"${var} shadows a table", loop.var_offset)
+      raise self.error(f"${var} shadows a table", header.var_offset)
     if var in scope.params:
-      raise self.error(f"${var} shadows a parameter", loop.var_offset)
+      raise self.error(f"${var} shadows a parameter", header.var_offset)
     if var in scope.loops:
-      raise self.error(f"${var} shadows an outer loop variable", loop.var_offset)
-    if loop.items is not None:
-      values = [collapse(self.substitute(item.text, item.offset, scope)) for item in loop.items]
+      raise self.error(f"${var} shadows an outer loop variable", header.var_offset)
+    if header.items is not None:
+      values = [collapse(self.substitute(item.text, item.offset, scope)) for item in header.items]
     else:
-      assert loop.range is not None
-      low, high = (self.bound(bound, scope) for bound in loop.range)
+      assert header.range is not None
+      low, high = (self.bound(bound, scope) for bound in header.range)
       step = 1 if high >= low else -1
       values = [str(n) for n in range(low, high + step, step)]
     for value in values:
-      self.trace.append((f"for ${var} = {value}", f"at {self.src.where(loop.for_offset)}"))
-      self.run_body(loop.body, Scope(scope.params, {**scope.loops, var: value}))
+      self.trace.append((f"for ${var} = {value}", f"at {self.src.where(header.for_offset)}"))
+      yield Scope(scope.params, {**scope.loops, var: value})
       self.trace.pop()
+
+  def expand(self, parts: list[Piece], scope: Scope) -> str:
+    """Templates a command's text, running its inline loops."""
+    return "".join(self.substitute(part.text, part.offset, scope) if isinstance(part, Value)
+                   else self.inline_loop(part, scope) for part in parts)
 
   def bound(self, bound: Bound, scope: Scope) -> int:
     if not bound.text.startswith("$"):

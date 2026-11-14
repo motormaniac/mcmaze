@@ -1,0 +1,16 @@
+execute as @e[tag=lookup] unless score @s north = .target1 var unless score @s north = .target2 var unless score @s north = .target3 var run say no match
+kill @e[tag=!a,tag=!b,tag=!c]
+say ["t1", "t2", "t3"]
+say 1-2
+say 321
+say 0x1-0x2 0y1-0y2
+say 1x1-1x2 1y1-1y2
+say 5:5 5:6
+say (1) ":)" (2) ":)"
+say [I;1] [I;2]
+say []
+say thanks for $name
+say waiting for bob in (the lobby)
+say for bob in 1..2 later
+say "for 3 in 1..2 ( x )"
+say platform 3 in 1..2 ( x )

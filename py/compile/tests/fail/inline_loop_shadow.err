@@ -1,0 +1,3 @@
+inline_loop_shadow.mct:3:13: $i shadows an outer loop variable
+  in for $i = 0   at inline_loop_shadow.mct:2
+  in $main        at inline_loop_shadow.mct:1
