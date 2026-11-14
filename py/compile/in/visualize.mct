@@ -1,0 +1,44 @@
+-- # Visualize graph
+
+table $offset (
+  north: ~ ~ ~-3,
+  east: ~3 ~ ~,
+  south: ~ ~ ~3,
+  west: ~-3 ~ ~,
+  up: ~ ~3 ~,
+  down: ~ ~-3 ~,
+)
+
+table $block (
+  0: minecraft:white_wool,
+  1: minecraft:orange_wool,
+  2: minecraft:magenta_wool,
+  3: minecraft:light_blue_wool,
+  4: minecraft:yellow_wool,
+  5: minecraft:lime_wool,
+  6: minecraft:pink_wool,
+  7: minecraft:gray_wool,
+  8: minecraft:light_gray_wool,
+  9: minecraft:cyan_wool,
+  10: minecraft:purple_wool,
+  11: minecraft:blue_wool,
+  12: minecraft:brown_wool,
+  13: minecraft:green_wool,
+  14: minecraft:red_wool,
+  15: minecraft:black_wool
+)
+
+$GRAPH = type=item_display,name=graph;
+
+func $visualize () (
+  execute as @e[$GRAPH,tag=!constraint] at @s run setblock ~ ~ ~ amethyst_block;
+  for $dir in (north, east, south, west, up, down) (
+    for $k in 0..15 (
+      execute as @e[$GRAPH,tag=!constraint] at @s if score @s $dir matches $k run setblock $offset[$dir] $block[$k];
+    )
+  )
+)
+
+func $main() (
+  $visualize();
+)

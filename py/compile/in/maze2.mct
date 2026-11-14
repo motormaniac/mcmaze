@@ -1,0 +1,295 @@
+--[
+# SCOREBOARDS
+## dummy scoreboards
+var = used for global variables
+-- the walls of this cell
+north   -Z
+east    +X
+south   +Z
+west    -X
+up      +Y
+down    -Y
+-- what wall should it connect to
+for $i in 1..$TARGET_AMOUNT (
+  target_north$i
+  target_east$i
+  target_south$i
+  target_west$i
+  target_up$i
+  target_down$i
+)
+-- book keeping
+edit = edit count of this cell
+i = index in the queue
+ref = reference index to a command block array. Maps this armor stand to its command block
+enabled = whether this lookup is turned on or not
+filter = used to track the filter status of each lookup
+rng = random number
+rngWeight = the weighting of a lookup entity (out of 100)
+
+## Lookup categories:
+use tags on lookups to keep track of which category it is
+
+## Global variables (uses the var scoreboard)
+.if = boolean flag (0 or 1) used for if statement logic.
+.queueSize = how many elements are in the queue
+.maxEdit = once any cell exceeds this number, the algorithm fails
+.maxWidth
+.maxLength
+.maxHeight
+
+To generate the lookup entities, a python script creates the IR format.
+The bulk place function is also created by a python script that goes straight to IR.
+
+Queue Book keeping
+push(elem): set new element's i to queueSize; queueSize += 1
+pop: Get element whos i == 0; set element's i to -1; all elems i -= 1; queueSize -= 1
+]--
+
+-- One .mct file is one command chain. Each section of the old file is its own
+-- chain, so each one is a function. Change what $main calls to build a different chain.
+func $main () (
+  $bfs_iterate();
+)
+
+-- selector arguments shared by every command
+$GRAPH = type=item_display,name=graph;
+$LOOKUP = type=item_display,name=lookup;
+-- NBT that makes an item_display invisible and tiny
+$ITEM_DISPLAY_NBT = view_range:0f,width:0f,height:0f;
+-- how many target walls are allowed per side
+$TARGET_AMOUNT = 6;
+
+$LOOKUP_POS = 
+$RAND_CHOOSE_POS = 
+
+-- cells are 7 blocks apart
+table $offset (
+  north: ~ ~ ~-7,
+  east: ~7 ~ ~,
+  south: ~ ~ ~7,
+  west: ~-7 ~ ~,
+  up: ~ ~7 ~,
+  down: ~ ~-7 ~,
+)
+
+-- the wall of the neighbor that faces this cell
+table $opposite (
+  north: south,
+  east: west,
+  south: north,
+  west: east,
+  up: down,
+  down: up,
+)
+
+
+-- # Init
+func $init () (
+  -- reset queue
+  scoreboard players set .queueSize var 0;
+  scoreboard players set @e[$GRAPH] i -1;
+  tag @e[$GRAPH,tag=select] remove select;
+
+  -- push starting node to queue
+  summon item_display ~ ~ ~ {CustomName:graph,$ITEM_DISPLAY_NBT,Tags:[new]};
+  scoreboard players operation @e[$GRAPH,tag=new] i = .queueSize var;
+  scoreboard players add .queueSize var 1;
+  -- set initial position (use 0 based indexing)
+  scoreboard players set @e[$GRAPH,tag=new] edit 0;
+  tag @e[$GRAPH,tag=new] remove new;
+)
+
+
+--[
+Filter System:
+weak = 2, strong = 1, none = 0
+Strong is more general than weak. Weak is always a subset of strong.
+
+Graph nodes with the constraint tag are immovable (always strong and cannot be edited)
+]--
+
+-- Emergency stop: kill all graph nodes
+-- kill @e[type=item_display,name=graph];
+
+-- TODO: set the air position
+$STOP_LOOP = {STOP LOOP};
+
+-- # BFS Iterate
+func $bfs_iterate () (
+  #-- Write Stop Loop
+  execute unless entity @e[$GRAPH,scores={i=0..}] run $STOP_LOOP;
+  #-- Write Stop Loop
+  execute as @e[$GRAPH] if score @s edit > .maxEdit var run $STOP_LOOP;
+
+  -- select graph node and pop from queue
+  tag @e[$GRAPH,scores={i=0}] add select;
+  scoreboard players set @e[$GRAPH,tag=select] i -1;
+  scoreboard players remove @e[$GRAPH,scores={i=1..}] i 1;
+  scoreboard players remove .queueSize var 1;
+
+  scoreboard players set @e[$LOOKUP,scores={enabled=1}] filter 2;
+
+  for $dir in (north, east, south, west, up, down) (
+    $filter_side($dir);
+  )
+
+
+  #-- If weakfilter results exist, remove strongfilter results
+  execute if entity @e[$LOOKUP,scores={filter=2}] run scoreboard players set @e[$LOOKUP,scores={filter=1}] filter 0;
+  #-- if no weakfilter exists but strongfilter exists
+  scoreboard players set .if var 0;
+  execute if entity @e[$LOOKUP,scores={filter=1}] run scoreboard players set .if var 1;
+  -- increment edit count of selected graph
+  execute if score .if var matches 1 run scoreboard players add @e[$GRAPH,tag=select] edit 1;
+
+  -- queue push neighbors whose edit counts are less than select's
+  for $dir in (north, east, south, west, up, down) (
+    $push_weaker_neighbor($dir);
+  )
+
+
+  -- If all filters are 0 (there were no strong or weak filters)
+  scoreboard players set .if var 0;
+  execute unless entity @e[$LOOKUP,scores={filter=1..2}] run scoreboard players set .if var 1;
+  -- if true: increment edit count of selected graph
+  execute if score .if var matches 1 run scoreboard players add @e[$GRAPH,tag=select] edit 1;
+  -- queue push select
+  execute if score .if var matches 1 run scoreboard players operation @e[$GRAPH,tag=select] i = .queueSize var;
+  !conditional
+  scoreboard players add .queueSize var 1;
+  !conditional
+  tag @e[$GRAPH,tag=select] remove select;
+
+
+  -- The following code should not work if there is no select armor stand
+  for $dir in (north, east, south, west, up, down) (
+    $push_empty_neighbor($dir);
+  )
+
+
+  #-- Pick random from filter results
+  --[
+  assume the scoreboard .randXCoordConst is already initialized to a valid number.
+  rand x coord const should be an x coordinate multipled by 100.
+  assume the entity randChoose already exists
+
+  Imagine each multiple of 100 is one block. In real space, the lookup entities are positioned at these random coordinates.
+  The randChoose entity is positioned such that the highest lookup is closest to it.
+  Adding or subtracting up to 100 from the random value will move the lookup entity by at most one block.
+  ]--
+  execute if entity @e[$GRAPH,tag=select] as @e[$LOOKUP,scores={filter=1..}] store result score @s rng run random value 0..100;
+  execute as @e[$LOOKUP,scores={filter=1..}] run scoreboard players operation @s rng += @s rngWeight;
+  scoreboard players operation @e[$LOOKUP,scores={filter=1..}] rng += .randXCoordConst var;
+  -- set the x coordinate of each lookup to its random value
+  execute as @e[type=item_display,name=lookup,scores={filter=1..}] store result entity @s Pos[0] float 0.01 run scoreboard players get @s rng;
+  execute as @e[type=item_display,name=randChoose] at @s run tag @n[$LOOKUP,scores={filter=1..}] add select;
+
+  #-- Transfer the properties from selected lookup to the selected graph
+  scoreboard players operation @e[$GRAPH,tag=select] ref = @e[$LOOKUP,tag=select] ref;
+  for $dir in (north, east, south, west, up, down) (
+    scoreboard players operation @e[$GRAPH,tag=select] $dir = @e[$LOOKUP,tag=select] $dir;
+    for $k in 1..$TARGET_AMOUNT (
+      scoreboard players operation @e[$GRAPH,tag=select] target_$dir$k = @e[$LOOKUP,tag=select] target_$dir$k;
+    )
+  )
+)
+
+-- Narrow the lookups down using the neighbor in direction $dir
+func $filter_side ($dir) (
+  #-- filter side $dir
+  -- bool of whether this is a strong neighbor or not
+  scoreboard players set .strong var 0;
+  -- use vars to temporarily store the values of the target cell (so we don't have to keep finding graph target)
+  for $k in 1..$TARGET_AMOUNT (
+    scoreboard players set .target$k var -1;
+  )
+  execute as @e[$GRAPH,tag=select] at @s positioned $offset[$dir] run tag @n[$GRAPH,distance=..1] add target;
+  for $k in 1..$TARGET_AMOUNT (
+    scoreboard players operation .target$k var = @n[$GRAPH,tag=target] target_$opposite[$dir]$k;
+  )
+  -- it's a strong neighbor if its edit count is greater, or if the neighbor is a constraint
+  execute if score @n[$GRAPH,tag=select] edit < @n[$GRAPH,tag=target] edit run scoreboard players set .strong var 1;
+  execute if entity @n[$GRAPH,tag=target,tag=constraint] run scoreboard players set .strong var 1;
+  -- if there are no weak matches, remove weak
+  -- if .target1 is empty, that means this is an empty neighbor. Skip empty neighbors
+  execute unless score .target1 var matches -1
+    as @e[$LOOKUP,scores={filter=2}]
+    for $k in 1..$TARGET_AMOUNT (
+      unless score @s $dir = .target$k var
+    )
+    run scoreboard players set @s filter 1;
+  -- if there are no strong matches, remove strong
+  execute unless score .target1 var matches -1
+    if score .strong var matches 1
+    as @e[$LOOKUP,scores={filter=1}]
+    for $k in 1..$TARGET_AMOUNT (
+      unless score @s $dir = .target$k var
+    )
+    run scoreboard players set @s filter 0;
+  tag @e[$GRAPH,tag=target] remove target;
+)
+
+-- Queue push the neighbor in direction $dir if its edit count is less than select's
+-- The .if flag is set in the outer context. This function should only run if .if == 1
+func $push_weaker_neighbor ($dir) (
+  #-- push weaker neighbor $dir
+  execute if score .if var matches 1
+    as @e[$GRAPH,tag=select] at @s positioned $offset[$dir]
+    as @n[$GRAPH,distance=..1,tag=!constraint]
+    if score @s i matches -1
+    if score @s edit < @n[$GRAPH,tag=select] edit
+    run scoreboard players operation @s i = .queueSize var;
+  !conditional
+  scoreboard players add .queueSize var 1;
+)
+
+-- Make a node in direction $dir if there isn't one, and queue push it
+func $push_empty_neighbor ($dir) (
+  #-- push empty neighbor $dir
+  execute as @e[$GRAPH,tag=select] at @s positioned $offset[$dir] unless entity @e[$GRAPH,distance=..1] run summon item_display ~ ~ ~ {CustomName:graph,$ITEM_DISPLAY_NBT,Tags:[new]};
+  scoreboard players operation @e[$GRAPH,tag=new] i = .queueSize var;
+  !conditional
+  scoreboard players set @e[$GRAPH,tag=new] edit 0;
+  !conditional
+  scoreboard players add .queueSize var 1;
+  tag @e[$GRAPH,tag=new] remove new;
+)
+
+
+--[
+- Strong = neighbors whose edit counts are greater than this cell
+- Constraints (maze boundaries) have infinite edit counts
+- Weak filters are ignored if no results exist
+
+Filter types: weak = 2, strong = 1, none = 0
+
+-- # Psuedocode
+if queue is empty, end loop
+if any graphs have an edit count above LIMIT, end loop
+
+node = Queue pop
+Filter based on adjacent cells. Filter entities are tagged either strongfilter & weakfilter or just strongfilter.
+Strongfilter is more general than weakfilter.
+  Set all lookups to filter 2
+  for each side:
+    if the side doesn't satisfy weak filter condition, set filter to 1
+    if the side doesn't satisfy strong filter condition, set filter to 0
+
+if there are lookups with filter 2
+  remove all strongfilters (all filter 1s go to filter 0)
+
+if there are lookups with filter 1 (there were no weak filters, so now we check the strong filters)
+  increase edit count of this cell by 1
+  queue push all occupied neighbors with edit counts less than this cell
+
+if all filters are 0 (there were no weak or strong filters)
+  increase edit count of this cell by 1
+  push this cell to the queue
+  unselect this cell
+
+-- the following code should not work if there is no selected cell
+add empty neighbors to queue
+pick random from filter results
+transfer properties to selected graph
+]--
