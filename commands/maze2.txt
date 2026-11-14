@@ -1,0 +1,312 @@
+THIS CODE IS OUTDATED
+Updated code is in py/complie/in/maze2.mct
+
+
+# SCOREBOARDS
+## dummy scoreboards
+var = used for global variables
+-- the walls of this cell
+north   -Z
+east    +X
+south   +Z
+west    -X
+up      +Y
+down    -Y
+-- what wall should it connect to
+target_north1
+target_east1
+target_south1
+target_west1
+target_up1
+target_down1
+
+target_north2
+target_east2
+target_south2
+target_west2
+target_up2
+target_down2
+
+target_north3
+target_east3
+target_south3
+target_west3
+target_up3
+target_down3
+-- book keeping
+edit = edit count of this cell
+i = index in the queue
+ref = reference index to a command block array. Maps this armor stand to its command block
+filter = used to track the filter status of each lookup
+rng = random number
+rngWeight = the weighting of a lookup entity (out of 100)
+
+## Global variables (uses the var scoreboard)
+.queueSize = how many elements are in the queue
+.maxEdit = once any cell exceeds this number, the algorithm fails
+.maxWidth
+.maxLength
+.maxHeight
+
+
+-- # Generate Map
+summon item_display ~ ~ ~ {CustomName:lookup,view_range:0f,width:0f,height:0f,Tags:[select]}
+scoreboard players set @e[type=item_display,name=lookup,tag=select] north
+scoreboard players set @e[type=item_display,name=lookup,tag=select] east
+scoreboard players set @e[type=item_display,name=lookup,tag=select] south
+scoreboard players set @e[type=item_display,name=lookup,tag=select] west
+scoreboard players set @e[type=item_display,name=lookup,tag=select] target_north
+scoreboard players set @e[type=item_display,name=lookup,tag=select] target_east
+scoreboard players set @e[type=item_display,name=lookup,tag=select] target_south
+scoreboard players set @e[type=item_display,name=lookup,tag=select] target_west
+scoreboard players set @e[type=item_display,name=lookup,tag=select] rngWeight
+scoreboard players set @e[type=item_display,name=lookup,tag=select] ref
+tag @e[type=item_display,name=lookup,tag=select] remove select
+
+
+Queue Book keeping
+push(elem): set new element's i to queueSize; queueSize += 1
+pop: Get element whos i == 0; set element's i to -1; all elems i -= 1; queueSize -= 1
+
+
+-- # Init
+-- reset queue
+scoreboard players set .queueSize var 0
+scoreboard players set @e[type=item_display,name=graph] i -1
+tag @e[type=item_display,name=graph,tag=select] remove select
+
+-- push starting node to queue
+summon item_display ~ ~ ~ {CustomName:graph,view_range:0f,width:0f,height:0f,Tags:[new]}
+scoreboard players operation @e[type=item_display,name=graph,tag=new] i = .queueSize var
+scoreboard players add .queueSize var 1
+-- set initial position (use 0 based indexing)
+scoreboard players set @e[type=item_display,name=graph,tag=new] edit 0
+tag @e[type=item_display,name=graph,tag=new] remove new
+
+**Emergency stop: kill all graph nodes**
+kill @e[type=item_display,name=graph]
+
+-- # BFS Iterate
+execute unless entity @e[type=item_display,name=graph,scores={i=0..}] run {stop loop}
+execute as @e[type=item_display,name=graph] if score @s edit > .maxEdit var run {stop loop}
+
+-- select graph node and pop from queue
+tag @e[type=item_display,name=graph,scores={i=0}] add select
+scoreboard players set @e[type=item_display,name=graph,tag=select] i -1
+scoreboard players remove @e[type=item_display,name=graph,scores={i=1..}] i 1
+scoreboard players remove .queueSize var 1
+
+
+-- ## Filter Possible outputs
+-- Filter types: weak = 2, strong = 1, none = 0
+scoreboard players set @e[type=item_display,name=lookup] filter 2
+
+-- graph nodes with the constraint tag are immovable (always strong and cannot be edited)
+
+-- check each direction
+-- use vars to temporarily store the values of the target cell (so we don't have to keep finding graph target)
+-- north
+scoreboard players set .target1 var -1
+scoreboard players set .target2 var -1
+scoreboard players set .target3 var -1
+-- bool of whether this is a strong neighbor or not
+scoreboard players set .strong var 0
+execute as @e[type=item_display,name=graph,tag=select] at @s positioned ~ ~ ~-7 run tag @n[type=item_display,name=graph,distance=..1] add target
+scoreboard players operation .target1 var = @n[type=item_display,name=graph,tag=target] target_south1
+scoreboard players operation .target2 var = @n[type=item_display,name=graph,tag=target] target_south2
+scoreboard players operation .target3 var = @n[type=item_display,name=graph,tag=target] target_south3
+-- it's a strong neighbor if it's edit count is greater of if it's a constraint
+execute if score @n[type=item_display,name=graph,tag=select] edit < @n[type=item_display,name=graph,tag=target] edit run scoreboard players set .strong var 1
+execute if entity @n[type=item_display,name=graph,tag=target,tag=constraint] run scoreboard players set .strong var 1
+-- if there are no weak matches, remove weak
+-- if .target1 is empty, that means this is an empty neighbor. Skip empty neighbors
+execute unless score .target1 var matches -1
+  as @e[type=item_display,name=lookup,scores={filter=2}]
+  unless score @s north = .target1 var
+  unless score @s north = .target2 var
+  unless score @s north = .target3 var
+  run scoreboard players set @s filter 1;
+-- if there are no strong matches, remove strong
+execute unless score .target1 var matches -1
+  if score .strong var matches 1
+  as @e[type=item_display,name=lookup,scores={filter=1}]
+  unless score @s north = .target1 var
+  unless score @s north = .target2 var
+  unless score @s north = .target3 var
+  run scoreboard players set @s filter 0;
+tag @e[type=item_display,name=graph,tag=target] remove target
+
+-- repeat the above for the other 4 directions
+
+
+-- ## if weakfilter results exist, remove strongfilter results
+execute if entity @e[type=item_display,name=lookup,scores={filter=2}] run scoreboard players set @e[type=item_display,name=lookup,scores={filter=1}] filter 0
+-- if no weakfilter exists but strongfilter exists
+scoreboard players set .if var 0  -- bool (used like an if statement branch)
+execute if entity @e[type=item_display,name=lookup,scores={filter=1}] run scoreboard players set .if var 1
+-- increment edit count of selected graph
+execute if score .if var matches 1 run scoreboard players add @e[type=item_display,name=graph,tag=select] edit 1
+
+-- queue push neighbors whose edit counts are less than select's
+--north
+execute if score .if var matches 1
+  as @e[type=item_display,name=graph,tag=select] at @s positioned ~ ~ ~-7
+  as @n[type=item_display,name=graph,distance=..1,tag=!constraint]
+  if score @s i matches -1
+  if score @s edit < @n[type=item_display,name=graph,tag=select] edit
+  run scoreboard players operation @s i = .queueSize var;
+-- conditional
+scoreboard players add .queueSize var 1
+-- east
+execute if score .if var matches 1
+  as @e[type=item_display,name=graph,tag=select] at @s positioned ~7 ~ ~
+  as @n[type=item_display,name=graph,distance=..1,tag=!constraint]
+  if score @s i matches -1
+  if score @s edit < @n[type=item_display,name=graph,tag=select] edit
+  run scoreboard players operation @s i = .queueSize var;
+-- conditional
+scoreboard players add .queueSize var 1
+-- south
+execute if score .if var matches 1
+  as @e[type=item_display,name=graph,tag=select] at @s positioned ~ ~ ~7
+  as @n[type=item_display,name=graph,distance=..1,tag=!constraint]
+  if score @s i matches -1
+  if score @s edit < @n[type=item_display,name=graph,tag=select] edit
+  run scoreboard players operation @s i = .queueSize var;
+-- conditional
+scoreboard players add .queueSize var 1
+-- west
+execute if score .if var matches 1
+  as @e[type=item_display,name=graph,tag=select] at @s positioned ~-7 ~ ~
+  as @n[type=item_display,name=graph,distance=..1,tag=!constraint]
+  if score @s i matches -1
+  if score @s edit < @n[type=item_display,name=graph,tag=select] edit
+  run scoreboard players operation @s i = .queueSize var;
+-- conditional
+scoreboard players add .queueSize var 1
+
+
+-- ## if all filters are 0 (there were no strong or weak filters)
+scoreboard players set .if var 0
+execute unless entity @e[type=item_display,name=lookup,scores={filter=1..2}] run scoreboard players set .if var 1
+-- if true: increment edit count of selected graph
+execute if score .if var matches 1 run scoreboard players add @e[type=item_display,name=graph,tag=select] edit 1
+-- queue push select
+execute if score .if var matches 1 run scoreboard players operation @e[type=item_display,name=graph,tag=select] i = .queueSize var
+-- conditional
+scoreboard players add .queueSize var 1
+-- conditional
+tag @e[type=item_display,name=graph,tag=select] remove select
+
+
+-- The following code should not work if there is no select armor stand
+-- ## Add all empty neighbors to queue
+-- north
+execute as @e[type=item_display,name=graph,tag=select] at @s positioned ~ ~ ~-7 unless entity @e[type=item_display,name=graph,distance=..1] run summon item_display ~ ~ ~ {CustomName:graph,view_range:0f,width:0f,height:0f,Tags:[new]}
+scoreboard players operation @e[type=item_display,name=graph,tag=new] i = .queueSize var
+-- conditional
+scoreboard players set @e[type=item_display,name=graph,tag=new] edit 0
+-- conditional
+scoreboard players add .queueSize var 1
+tag @e[type=item_display,name=graph,tag=new] remove new
+
+-- east
+execute as @e[type=item_display,name=graph,tag=select] at @s positioned ~7 ~ ~ unless entity @e[type=item_display,name=graph,distance=..1] run summon item_display ~ ~ ~ {CustomName:graph,view_range:0f,width:0f,height:0f,Tags:[new]}
+scoreboard players operation @e[type=item_display,name=graph,tag=new] i = .queueSize var
+-- conditional
+scoreboard players set @e[type=item_display,name=graph,tag=new] edit 0
+-- conditional
+scoreboard players add .queueSize var 1
+tag @e[type=item_display,name=graph,tag=new] remove new
+
+-- south
+execute as @e[type=item_display,name=graph,tag=select] at @s positioned ~ ~ ~7 unless entity @e[type=item_display,name=graph,distance=..1] run summon item_display ~ ~ ~ {CustomName:graph,view_range:0f,width:0f,height:0f,Tags:[new]}
+scoreboard players operation @e[type=item_display,name=graph,tag=new] i = .queueSize var
+-- conditional
+scoreboard players set @e[type=item_display,name=graph,tag=new] edit 0
+-- conditional
+scoreboard players add .queueSize var 1
+tag @e[type=item_display,name=graph,tag=new] remove new
+
+-- west
+execute as @e[type=item_display,name=graph,tag=select] at @s positioned ~-7 ~ ~ unless entity @e[type=item_display,name=graph,distance=..1] run summon item_display ~ ~ ~ {CustomName:graph,view_range:0f,width:0f,height:0f,Tags:[new]}
+scoreboard players operation @e[type=item_display,name=graph,tag=new] i = .queueSize var
+-- conditional
+scoreboard players set @e[type=item_display,name=graph,tag=new] edit 0
+-- conditional
+scoreboard players add .queueSize var 1
+tag @e[type=item_display,name=graph,tag=new] remove new
+
+
+-- ## Pick random from filter results
+-- assume the scoreboard .randXCoordConst is already initialized to a valid number.
+-- rand x coord const should be an x coordinate multipled by 100.
+-- assume the entity randChoose already exists
+-- convert the rng number into a coordinate, then use randChoose to pick the closest entity
+execute if entity @e[type=item_display,name=graph,tag=select] as @e[type=item_display,name=lookup,scores={filter=1..}] store result score @s rng run random value 0..100
+scoreboard players operation @e[type=item_display,name=lookup,scores={filter=1..}] rng += .randXCoordConst var
+execute as @e[type=item_display,name=lookup,scores={filter=1..}] store result entity @s Pos[0] float 0.01 run scoreboard players get @s rng
+execute as @e[type=item_display,name=randChoose] at @s run tag @n[type=item_display,name=lookup,scores={filter=1..}] add select
+
+-- transfer the properties from selected lookup to the selected graph
+scoreboard players operation @e[type=item_display,name=graph,tag=select] north = @e[type=item_display,name=lookup,tag=select] north
+scoreboard players operation @e[type=item_display,name=graph,tag=select] east = @e[type=item_display,name=lookup,tag=select] east
+scoreboard players operation @e[type=item_display,name=graph,tag=select] south = @e[type=item_display,name=lookup,tag=select] south
+scoreboard players operation @e[type=item_display,name=graph,tag=select] west = @e[type=item_display,name=lookup,tag=select] west
+scoreboard players operation @e[type=item_display,name=graph,tag=select] up = @e[type=item_display,name=lookup,tag=select] up
+scoreboard players operation @e[type=item_display,name=graph,tag=select] down = @e[type=item_display,name=lookup,tag=select] down
+scoreboard players operation @e[type=item_display,name=graph,tag=select] target_north1 = @e[type=item_display,name=lookup,tag=select] target_north1
+scoreboard players operation @e[type=item_display,name=graph,tag=select] target_north2 = @e[type=item_display,name=lookup,tag=select] target_north2
+scoreboard players operation @e[type=item_display,name=graph,tag=select] target_north3 = @e[type=item_display,name=lookup,tag=select] target_north3
+scoreboard players operation @e[type=item_display,name=graph,tag=select] ref = @e[type=item_display,name=lookup,tag=select] ref
+
+
+====================================================
+
+--# Visualize graph
+execute as @e[type=item_display,name=graph,tag=!constraint] run setblock ~ ~ ~ amethyst_block
+
+====================================================
+
+
+-- # Paste all graph nodes
+execute as @e[type=item_display,name=graph,scores={ref=0}] at @s run place template ~-3 ~-1 ~-3 maze:open
+execute as @e[type=item_display,name=graph,scores={ref=1}] at @s run place template ~-3 ~-1 ~-3 maze:open
+
+
+=====================================================
+
+- Strong = neighbors whose edit counts are greater than this cell
+- Constraints (maze boundaries) have infinite edit counts
+- Weak filters are ignored if no results exist
+
+Filter types: weak = 2, strong = 1, none = 0
+
+-- # Psuedocode
+if queue is empty, end loop
+if any graphs have an edit count above LIMIT, end loop
+
+node = Queue pop
+Filter based on adjacent cells. Filter entities are tagged either strongfilter & weakfilter or just strongfilter.
+Strongfilter is more general than weakfilter.
+  Set all lookups to filter 2
+  for each side:
+    if the side doesn't satisfy weak filter condition, set filter to 1
+    if the side doesn't satisfy strong filter condition, set filter to 0
+
+if there are lookups with filter 2
+  remove all strongfilters (all filter 1s go to filter 0)
+
+if there are lookups with filter 1 (there were no weak filters, so now we check the strong filters)
+  increase edit count of this cell by 1
+  queue push all occupied neighbors with edit counts less than this cell
+
+if all filters are 0 (there were no weak or strong filters)
+  increase edit count of this cell by 1
+  push this cell to the queue
+  unselect this cell
+
+-- the following code should not work if there is no selected cell
+add empty neighbors to queue
+pick random from filter results
+transfer properties to selected graph

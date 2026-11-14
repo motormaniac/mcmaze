@@ -33,6 +33,7 @@ global scoreboard name: .global
 - flagCooldown = time scoreboard. When player steals a flag, the flag can't be stolen again for some time.
 - flagCapture = time scoreboard. A player must sit on a flag's location for some time.
 - settings = example: scoreboard players set .hiderNameOn settings 1 (true)
+- fireworkCount = counts how many fireworks the player has in their inventory
 Triggers:
 - book = debug: gives the target player a command book
 - end = when all players trigger end, the game forces a draw and exits early.

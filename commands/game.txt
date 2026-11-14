@@ -14,18 +14,15 @@ Tell players to turn sounds on
 Explicitely tell players to remove
 
 ## Change Notes
-Portals enabled
-Allow 0% multiblock fill
-Add spectate maze generation
-Add portal between maze lobby and fountain
+You can press the start button while the game is happening
+Blocks break when the game ends
+Spawn multiple tutorials
+Get rid of the green and red
+Fix the Tutorial teleporter
 set tutorial players to spectator team
-Change repeating command blocks to always active
 Change tp locations for maze lobby
 Make a minigame in the lobby
 When starting mouse mode, make at least one person not spectator
-Change bow room to crossbow
-If no portals spawn in the maze, the process fails
-Create lobby tp item
 
 Gamemodes
 Freeztag
