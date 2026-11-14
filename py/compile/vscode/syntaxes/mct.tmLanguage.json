@@ -1,0 +1,229 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "MCT",
+  "scopeName": "source.mct",
+  "fileTypes": ["mct"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#compiler-comment" },
+    { "include": "#modifier" },
+    { "include": "#func" },
+    { "include": "#table" },
+    { "include": "#for" },
+    { "include": "#global" },
+    { "include": "#call" },
+    { "include": "#command-name" },
+    { "include": "#text" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.mct",
+          "begin": "^\\s*(--\\[)",
+          "beginCaptures": { "1": { "name": "punctuation.definition.comment.begin.mct" } },
+          "end": "\\]--",
+          "endCaptures": { "0": { "name": "punctuation.definition.comment.end.mct" } }
+        },
+        {
+          "name": "comment.line.double-dash.mct",
+          "match": "^\\s*(--).*$",
+          "captures": { "1": { "name": "punctuation.definition.comment.mct" } }
+        }
+      ]
+    },
+    "compiler-comment": {
+      "name": "meta.compiler-comment.mct",
+      "contentName": "string.unquoted.compiler-comment.mct",
+      "begin": "^\\s*(#--)",
+      "beginCaptures": { "1": { "name": "keyword.other.compiler-comment.mct" } },
+      "end": "$",
+      "patterns": [{ "include": "#variable" }]
+    },
+    "modifier": {
+      "name": "meta.modifier.mct",
+      "begin": "^\\s*(!)",
+      "beginCaptures": { "1": { "name": "keyword.operator.modifier.mct" } },
+      "end": "$",
+      "patterns": [
+        { "name": "storage.modifier.mct", "match": "\\b(conditional|needs_redstone)\\b" },
+        { "name": "punctuation.separator.comma.mct", "match": "," },
+        { "name": "invalid.illegal.modifier.mct", "match": "[^\\s,]+" }
+      ]
+    },
+    "func": {
+      "patterns": [
+        {
+          "name": "meta.function.mct",
+          "begin": "\\b(func)\\s+(\\$[A-Za-z0-9_]+)\\s*(\\()",
+          "beginCaptures": {
+            "1": { "name": "storage.type.function.mct" },
+            "2": { "name": "entity.name.function.mct" },
+            "3": { "name": "punctuation.definition.parameters.begin.mct" }
+          },
+          "end": "\\)",
+          "endCaptures": { "0": { "name": "punctuation.definition.parameters.end.mct" } },
+          "patterns": [
+            { "name": "variable.parameter.mct", "match": "\\$[A-Za-z0-9_]+" },
+            { "name": "punctuation.separator.comma.mct", "match": "," }
+          ]
+        },
+        {
+          "match": "\\b(func)\\s+(\\$[A-Za-z0-9_]+)",
+          "captures": {
+            "1": { "name": "storage.type.function.mct" },
+            "2": { "name": "entity.name.function.mct" }
+          }
+        }
+      ]
+    },
+    "table": {
+      "patterns": [
+        {
+          "name": "meta.table.mct",
+          "begin": "\\b(table)\\s+(\\$[A-Za-z0-9_]+)\\s*(\\()",
+          "beginCaptures": {
+            "1": { "name": "storage.type.table.mct" },
+            "2": { "name": "entity.name.type.table.mct" },
+            "3": { "name": "punctuation.section.table.begin.mct" }
+          },
+          "end": "\\)",
+          "endCaptures": { "0": { "name": "punctuation.section.table.end.mct" } },
+          "patterns": [
+            { "include": "#comments" },
+            {
+              "match": "(?:^|(?<=[(,]))\\s*([A-Za-z0-9_]+|-\\d+)\\s*(:)",
+              "captures": {
+                "1": { "name": "support.type.property-name.key.mct" },
+                "2": { "name": "punctuation.separator.key-value.mct" }
+              }
+            },
+            { "include": "#groups" },
+            { "include": "#text" }
+          ]
+        },
+        {
+          "match": "\\b(table)\\s+(\\$[A-Za-z0-9_]+)",
+          "captures": {
+            "1": { "name": "storage.type.table.mct" },
+            "2": { "name": "entity.name.type.table.mct" }
+          }
+        }
+      ]
+    },
+    "groups": {
+      "comment": "Brackets inside a table, so a comma in NBT like {a:1,b:2} doesn't look like the start of a new key.",
+      "patterns": [
+        {
+          "begin": "\\(",
+          "end": "\\)",
+          "patterns": [{ "include": "#groups" }, { "include": "#text" }]
+        },
+        {
+          "begin": "\\[",
+          "end": "\\]",
+          "patterns": [{ "include": "#groups" }, { "include": "#text" }]
+        },
+        {
+          "begin": "\\{",
+          "end": "\\}",
+          "patterns": [{ "include": "#groups" }, { "include": "#text" }]
+        }
+      ]
+    },
+    "for": {
+      "name": "meta.loop.mct",
+      "begin": "\\b(for)\\s+(\\$[A-Za-z0-9_]+)\\s+(in)\\b",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.loop.mct" },
+        "2": { "name": "variable.other.loop.mct" },
+        "3": { "name": "keyword.control.loop.mct" }
+      },
+      "end": "(?=\\()|$",
+      "patterns": [
+        { "name": "keyword.operator.range.mct", "match": "\\.\\." },
+        { "name": "constant.numeric.integer.mct", "match": "-?\\d+" },
+        { "include": "#variable" }
+      ]
+    },
+    "global": {
+      "match": "^\\s*(\\$[A-Za-z0-9_]+)\\s*(=)",
+      "captures": {
+        "1": { "name": "variable.other.constant.mct" },
+        "2": { "name": "keyword.operator.assignment.mct" }
+      }
+    },
+    "call": {
+      "match": "\\$[A-Za-z0-9_]+(?=\\()",
+      "name": "entity.name.function.call.mct"
+    },
+    "command-name": {
+      "comment": "The first word of a line, or of a command after ; or run. Continuation lines (as, at, run) get the same color.",
+      "patterns": [
+        {
+          "match": "^\\s*(?!(?:for|func|table)\\b)([a-z_]+)\\b(?!:)",
+          "captures": { "1": { "name": "keyword.control.flow.mct" } }
+        },
+        {
+          "match": "(?<=;|\\]--)\\s*([a-z_]+)\\b(?!:)",
+          "captures": { "1": { "name": "keyword.control.flow.mct" } }
+        },
+        {
+          "match": "\\b(run)\\s+([a-z_]+)\\b(?!:)",
+          "captures": {
+            "1": { "name": "keyword.control.flow.mct" },
+            "2": { "name": "keyword.control.flow.mct" }
+          }
+        }
+      ]
+    },
+    "text": {
+      "patterns": [
+        { "include": "#string" },
+        { "include": "#variable" },
+        { "name": "support.class.selector.mct", "match": "@[a-z]+" },
+        { "name": "entity.name.function.resource.mct", "match": "#?[a-z_][a-z0-9_.-]*:[a-z_][a-z0-9_./-]*" },
+        { "name": "keyword.operator.range.mct", "match": "\\.\\." },
+        { "name": "constant.numeric.mct", "match": "(?<![A-Za-z0-9_.])-?\\d+(?:\\.\\d+)?[bBsSlLfFdD]?\\b" },
+        { "name": "punctuation.terminator.statement.mct", "match": ";" }
+      ]
+    },
+    "string": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.mct",
+          "begin": "(?<![A-Za-z0-9_])\"",
+          "end": "\"|$",
+          "patterns": [
+            { "name": "constant.character.escape.mct", "match": "\\\\." },
+            { "include": "#variable" }
+          ]
+        },
+        {
+          "name": "string.quoted.single.mct",
+          "begin": "(?<![A-Za-z0-9_])'",
+          "end": "'|$",
+          "patterns": [
+            { "name": "constant.character.escape.mct", "match": "\\\\." },
+            { "include": "#variable" }
+          ]
+        }
+      ]
+    },
+    "variable": {
+      "patterns": [
+        { "name": "constant.character.escape.dollar.mct", "match": "\\$\\$" },
+        {
+          "match": "(\\$\\{)([A-Za-z0-9_]+)(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.variable.begin.mct" },
+            "2": { "name": "variable.other.mct" },
+            "3": { "name": "punctuation.definition.variable.end.mct" }
+          }
+        },
+        { "name": "variable.other.mct", "match": "\\$[A-Za-z0-9_]+" },
+        { "name": "invalid.illegal.dollar.mct", "match": "\\$" }
+      ]
+    }
+  }
+}

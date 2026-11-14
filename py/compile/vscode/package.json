@@ -1,0 +1,35 @@
+{
+  "name": "mct-syntax",
+  "displayName": "MCT syntax",
+  "description": "Syntax highlighting for .mct command templates (see py/compile/LANG.md)",
+  "version": "0.1.0",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "mct",
+        "aliases": [
+          "MCT",
+          "mct"
+        ],
+        "extensions": [
+          ".mct"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "mct",
+        "scopeName": "source.mct",
+        "path": "./syntaxes/mct.tmLanguage.json"
+      }
+    ]
+  }
+}

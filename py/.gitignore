@@ -4,3 +4,4 @@ __pycache__/
 compile/ir/
 compile/out/
 sim/fuzz/
+compile/vscode/*.vsix
