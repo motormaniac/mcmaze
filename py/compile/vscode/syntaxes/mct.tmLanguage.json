@@ -10,6 +10,7 @@
     { "include": "#func" },
     { "include": "#table" },
     { "include": "#for" },
+    { "include": "#sep" },
     { "include": "#global" },
     { "include": "#call" },
     { "include": "#command-name" },
@@ -33,20 +34,19 @@
       ]
     },
     "compiler-comment": {
-      "name": "meta.compiler-comment.mct",
-      "contentName": "string.unquoted.compiler-comment.mct",
+      "name": "string.unquoted.compiler-comment.mct",
       "begin": "^\\s*(#--)",
-      "beginCaptures": { "1": { "name": "keyword.other.compiler-comment.mct" } },
+      "beginCaptures": { "1": { "name": "punctuation.definition.string.begin.mct" } },
       "end": "$",
       "patterns": [{ "include": "#variable" }]
     },
     "modifier": {
       "name": "meta.modifier.mct",
       "begin": "^\\s*(!)",
-      "beginCaptures": { "1": { "name": "keyword.operator.modifier.mct" } },
+      "beginCaptures": { "1": { "name": "constant.language.modifier.mct" } },
       "end": "$",
       "patterns": [
-        { "name": "storage.modifier.mct", "match": "\\b(conditional|needs_redstone)\\b" },
+        { "name": "constant.language.modifier.mct", "match": "\\b(conditional|needs_redstone)\\b" },
         { "name": "punctuation.separator.comma.mct", "match": "," },
         { "name": "invalid.illegal.modifier.mct", "match": "[^\\s,]+" }
       ]
@@ -141,10 +141,17 @@
       },
       "end": "(?=\\()|$",
       "patterns": [
+        { "include": "#sep" },
+        { "include": "#string" },
         { "name": "keyword.operator.range.mct", "match": "\\.\\." },
         { "name": "constant.numeric.integer.mct", "match": "-?\\d+" },
         { "include": "#variable" }
       ]
+    },
+    "sep": {
+      "comment": "sep before a quoted separator, after a loop's range (inside #for) or its list (after #for ends at the list's open paren).",
+      "match": "\\b(sep)\\s+(?=[\"'])",
+      "captures": { "1": { "name": "keyword.control.loop.mct" } }
     },
     "global": {
       "match": "^\\s*(\\$[A-Za-z0-9_]+)\\s*(=)",
@@ -161,7 +168,7 @@
       "comment": "The first word of a line, or of a command after ; or run. Continuation lines (as, at, run) get the same color.",
       "patterns": [
         {
-          "match": "^\\s*(?!(?:for|func|table)\\b)([a-z_]+)\\b(?!:)",
+          "match": "^\\s*(?!(?:for|func|table|sep)\\b)([a-z_]+)\\b(?!:)",
           "captures": { "1": { "name": "keyword.control.flow.mct" } }
         },
         {
