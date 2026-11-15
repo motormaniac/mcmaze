@@ -1,7 +1,7 @@
 {
   "name": "mct-syntax",
   "displayName": "MCT syntax",
-  "description": "Syntax highlighting for .mct command templates (see py/compile/LANG.md)",
+  "description": "Syntax highlighting for .mct command templates (see tools/mct/LANG.md)",
   "version": "0.1.1",
   "publisher": "local",
   "engines": {

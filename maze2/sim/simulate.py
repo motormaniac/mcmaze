@@ -1,12 +1,11 @@
-"""Simulates the maze2 algorithm (commands/maze2.txt) so tests can be checked before running in game.
+"""Simulates the maze2 algorithm (maze2/src/maze2.mct) so tests can be checked before running in game.
 
-  cd py
-  uv run sim/simulate.py check rooms.csv [--category NAME]
+  uv run poe sim check rooms.csv [--category NAME]
       expand rotations, check reciprocity, flag likely typos, list encoding ids and wool colors
-  uv run sim/simulate.py run rooms.csv --category NAME --size 4 1 4 [--constraint 1,0,2 ...]
+  uv run poe sim run rooms.csv --category NAME --size 4 1 4 [--constraint 1,0,2 ...]
       exact verdict (solvable or not), then many simulated runs: how long they take, how high edit
       counts climb, and the false-error rate for each LIMIT
-  uv run sim/simulate.py fuzz --instances 300
+  uv run poe sim fuzz --instances 300
       random small reciprocal inputs; reports any run that ends with a wrong answer or that looks
       stuck on a solvable input
 
@@ -301,7 +300,7 @@ def cmd_fuzz(args: argparse.Namespace) -> int:
     if not flagged:
       continue
     anomalies += 1
-    cmd = (f"uv run sim/simulate.py run {args.dump}/fuzz{seed}.csv --size "
+    cmd = (f"uv run poe sim run {args.dump}/fuzz{seed}.csv --size "
            f"{' '.join(map(str, problem.size))}"
            + "".join(f" --constraint {x},{y},{z}" for x, y, z in sorted(problem.constraints)))
     print(f"instance {seed} ({verdict.status}): {'; '.join(flagged)}")
@@ -318,7 +317,7 @@ def cmd_fuzz(args: argparse.Namespace) -> int:
 # --------------------------------------------------------------------------------------------- main
 
 def main(argv: list[str]) -> int:
-  parser = argparse.ArgumentParser(prog="uv run sim/simulate.py", description=__doc__.split("\n")[0])
+  parser = argparse.ArgumentParser(prog="uv run poe sim", description=__doc__.split("\n")[0])
   sub = parser.add_subparsers(dest="command", required=True)
 
   check = sub.add_parser("check", help="expand rotations and validate a cell-type CSV")

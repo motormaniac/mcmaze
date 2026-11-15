@@ -1,8 +1,7 @@
 """Compiles a .mct template file into IR, one command per line. See LANG.md.
 Run it through main.py:
 
-  cd py
-  uv run compile/main.py --ir compile/in/walls.mct  -- writes compile/ir/walls.irt
+  uv run poe mct --ir maze2/src/walls.mct  -- writes maze2/ir/walls.irt
 
 The compiler runs in four stages:
   1. mask_comments: blank out comments (keeping every character's position)

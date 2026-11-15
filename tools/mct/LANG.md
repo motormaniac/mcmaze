@@ -1,16 +1,15 @@
 # Define the templating language
 
-`compile.py` turns a `.mct` file into IR (`.irt`). `schem.py` turns the IR into a WorldEdit schematic. `main.py` is the command line for both, and like gcc it runs whichever stages each file needs. Sources go in `compile/in/`, IR goes to `compile/ir/` and schematics go to `compile/out/`.
+`compile.py` turns a `.mct` file into IR (`.irt`). `schem.py` turns the IR into a WorldEdit schematic. `main.py` is the command line for both, and like gcc it runs whichever stages each file needs. Sources go in a project's `src/` folder (like `maze2/src/`). IR goes to the project's `ir/` folder and schematics go to its `schem/` folder.
 
-    cd py
-    uv run compile/main.py compile/in/walls.mct
-    -- writes compile/out/walls.schem (the IR is only kept in memory)
-    uv run compile/main.py --ir compile/in/walls.mct
-    -- stops after the compiler and writes compile/ir/walls.irt
-    uv run compile/main.py --ir --schem compile/in/walls.mct
+    uv run poe mct maze2/src/walls.mct
+    -- writes maze2/schem/walls.schem (the IR is only kept in memory)
+    uv run poe mct --ir maze2/src/walls.mct
+    -- stops after the compiler and writes maze2/ir/walls.irt
+    uv run poe mct --ir --schem maze2/src/walls.mct
     -- writes both
-    uv run compile/main.py compile/ir/walls.irt
-    -- skips the compiler and writes compile/out/walls.schem
+    uv run poe mct maze2/ir/walls.irt
+    -- skips the compiler and writes maze2/schem/walls.schem
 
 `--ir` and `--schem` pick which files get written, and with neither you get just the schematic. `-o PATH` writes the output somewhere else, and only works with one input file and one kind of output. `--width`, `--length`, `--gap` and `--track-output` control the schematic. Each layer is `--width` blocks east-west by `--length` rows north-south, and it's square unless you give `--length`. You can pass several files at once.
 
@@ -317,11 +316,11 @@ The compiler stops at the first error. Errors show the file, line and column, an
       in $main             at walls.mct:10
 
 ## Tests
-`compile/tests/pass/` holds pairs like `loops.mct` and `loops.irt` (the expected IR). `compile/tests/fail/` holds pairs like `recursion_direct.mct` and `recursion_direct.err` (the expected first line of the error, plus an optional trace). Files starting with `_` aren't tests, just files for the import tests to import. Run them with `uv run pytest` from `py/`.
+`tools/mct/tests/pass/` holds pairs like `loops.mct` and `loops.irt` (the expected IR). `tools/mct/tests/fail/` holds pairs like `recursion_direct.mct` and `recursion_direct.err` (the expected first line of the error, plus an optional trace). Files starting with `_` aren't tests, just files for the import tests to import. Run them with `uv run pytest` from the repo root.
 
 # IR (Intermediate Representation)
 
-The IR is what `compile.py` writes to `compile/ir/<name>.irt` and what `schem.py` reads. It's one command chain, written as plain text with one item per line. It isn't meant to be written by hand, so it's whitespace sensitive.
+The IR is what `compile.py` writes to `<project>/ir/<name>.irt` and what `schem.py` reads. It's one command chain, written as plain text with one item per line. It isn't meant to be written by hand, so it's whitespace sensitive.
 
 ## Lines
 Every line is one of three kinds, decided by how it starts:

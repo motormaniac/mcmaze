@@ -1,19 +1,26 @@
-"""Writes the in-game test rooms for maze2 to manual_test/test_rooms.csv (room sheet layout).
+"""Writes the in-game test rooms for maze2 to maze2/manual_test/test_rooms.csv (room sheet layout).
 
-  cd py
-  uv run manual_test/make_cases.py
+  uv run poe cases
 
 Every test is one category, so the sheet is compiled once and each test is run by enabling only its
-category. See manual_test/TESTS.md for what each test checks and how to run it.
+category. See TESTS.md for what each test checks and how to run it.
 
-Encodings: wall (constraint encoding, id 0), open, door, hatch, join, and the t_tri end and mid encodings.
+Encodings: constraint (the wall encoding, which rooms.py always numbers 0, so rooms can sit against
+constraint nodes), open, door, hatch, join, and the t_tri end and mid encodings.
 """
 
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "sim"))
-from tiles import WALL, Tile, write_csv  # noqa: E402
+PY = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PY / "sim"))
+sys.path.insert(0, str(PY / "rooms"))
+from rooms import CONSTRAINT_ENCODING  # noqa: E402
+from tiles import Tile, write_csv  # noqa: E402
+
+# walls use the constraint encoding: constraint nodes only accept id 0, so any face that can end up
+# against the maze bounds has to be it
+WALL = CONSTRAINT_ENCODING
 
 OUT = Path(__file__).with_name("test_rooms.csv")
 

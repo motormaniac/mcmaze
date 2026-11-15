@@ -32,7 +32,7 @@ func $remove_all_constraints() (
   kill @e[$GRAPH,tag=constraint];
 )
 
--- Test cases from py/manual_test/TESTS.md: each one enables only its test's category
+-- Test cases from maze2/manual_test/TESTS.md: each one enables only its test's category
 func $enable_category ($category) (
   scoreboard players set @e[$LOOKUP] enabled 0;
   scoreboard players set @e[$LOOKUP,tag=cat_$category] enabled 1;

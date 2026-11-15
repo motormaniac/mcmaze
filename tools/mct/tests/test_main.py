@@ -12,15 +12,13 @@ IR = "#-- greet\nsay hi\n!conditional\nsay bye\n"
 
 
 @pytest.fixture
-def dirs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-  monkeypatch.setattr(cli, "IR_DIR", tmp_path / "ir")
-  monkeypatch.setattr(cli, "OUT_DIR", tmp_path / "out")
+def dirs(tmp_path: Path) -> Path:
   return tmp_path
 
 def test_mct_goes_all_the_way_to_a_schematic(dirs: Path) -> None:
   (dirs / "walls.mct").write_text(MCT)
   assert cli.main([str(dirs / "walls.mct"), "--width", "4"]) == 0
-  walls = nbtlib.load(dirs / "out" / "walls.schem")["Schematic"]
+  walls = nbtlib.load(dirs / "schem" / "walls.schem")["Schematic"]
   assert walls["Width"] == 4
   assert any(e["Id"] == "minecraft:sign" for e in walls["Blocks"]["BlockEntities"])
   assert not (dirs / "ir").exists() # the IR is only written with --ir
@@ -34,31 +32,31 @@ def test_mct_goes_all_the_way_to_a_schematic(dirs: Path) -> None:
 def test_width_and_length(dirs: Path, args: list[str], size: tuple[int, int]) -> None:
   (dirs / "walls.mct").write_text(MCT)
   assert cli.main([str(dirs / "walls.mct"), *args]) == 0
-  walls = nbtlib.load(dirs / "out" / "walls.schem")["Schematic"]
+  walls = nbtlib.load(dirs / "schem" / "walls.schem")["Schematic"]
   assert (walls["Width"], walls["Length"]) == size
 
 def test_ir_flag_stops_at_ir(dirs: Path) -> None:
   (dirs / "walls.mct").write_text(MCT)
   assert cli.main(["--ir", str(dirs / "walls.mct")]) == 0
   assert (dirs / "ir" / "walls.irt").read_bytes() == IR.encode()
-  assert not (dirs / "out").exists()
+  assert not (dirs / "schem").exists()
 
 def test_schem_alone_is_the_default(dirs: Path) -> None:
   (dirs / "walls.mct").write_text(MCT)
   assert cli.main(["--schem", str(dirs / "walls.mct")]) == 0
-  assert (dirs / "out" / "walls.schem").is_file()
+  assert (dirs / "schem" / "walls.schem").is_file()
   assert not (dirs / "ir").exists()
 
 def test_ir_and_schem_write_both(dirs: Path) -> None:
   (dirs / "walls.mct").write_text(MCT)
   assert cli.main(["--ir", "--schem", str(dirs / "walls.mct")]) == 0
   assert (dirs / "ir" / "walls.irt").read_bytes() == IR.encode()
-  assert (dirs / "out" / "walls.schem").is_file()
+  assert (dirs / "schem" / "walls.schem").is_file()
 
 def test_irt_skips_the_compiler(dirs: Path) -> None:
   (dirs / "chain.irt").write_bytes(b"say hi\n!needs_redstone\nsay bye\n")
   assert cli.main([str(dirs / "chain.irt")]) == 0
-  assert (dirs / "out" / "chain.schem").is_file()
+  assert (dirs / "schem" / "chain.schem").is_file()
 
 def test_dash_o_names_the_output(dirs: Path) -> None:
   (dirs / "walls.mct").write_text(MCT)
@@ -70,7 +68,7 @@ def test_dash_o_names_the_output(dirs: Path) -> None:
 def test_ir_and_schem_on_irt_just_builds(dirs: Path) -> None:
   (dirs / "chain.irt").write_bytes(b"say hi\n")
   assert cli.main(["--ir", "--schem", str(dirs / "chain.irt")]) == 0
-  assert (dirs / "out" / "chain.schem").is_file()
+  assert (dirs / "schem" / "chain.schem").is_file()
   assert not (dirs / "ir").exists()
 
 def test_several_inputs_keep_going_after_a_failure(dirs: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -78,8 +76,8 @@ def test_several_inputs_keep_going_after_a_failure(dirs: Path, capsys: pytest.Ca
   (dirs / "good.mct").write_text(MCT)
   assert cli.main([str(dirs / "bad.irt"), str(dirs / "good.mct")]) == 1
   assert capsys.readouterr().err.strip() == "bad.irt:2: modifier must be followed directly by a command"
-  assert not (dirs / "out" / "bad.schem").exists()
-  assert (dirs / "out" / "good.schem").is_file()
+  assert not (dirs / "schem" / "bad.schem").exists()
+  assert (dirs / "schem" / "good.schem").is_file()
 
 def test_compile_errors_are_reported(dirs: Path, capsys: pytest.CaptureFixture[str]) -> None:
   (dirs / "empty.mct").write_text("-- nothing\n")
@@ -104,4 +102,14 @@ def test_usage_errors(dirs: Path, monkeypatch: pytest.MonkeyPatch, args: list[st
   with pytest.raises(SystemExit) as info:
     cli.main(args)
   assert info.value.code == 2
-  assert not (dirs / "out").exists()
+  assert not (dirs / "schem").exists()
+
+def test_src_and_ir_write_next_to_their_folder(dirs: Path) -> None:
+  (dirs / "src").mkdir()
+  (dirs / "src" / "walls.mct").write_text(MCT)
+  assert cli.main(["--ir", "--schem", str(dirs / "src" / "walls.mct")]) == 0
+  assert (dirs / "ir" / "walls.irt").read_bytes() == IR.encode()
+  assert (dirs / "schem" / "walls.schem").is_file()
+  (dirs / "schem" / "walls.schem").unlink()
+  assert cli.main([str(dirs / "ir" / "walls.irt")]) == 0
+  assert (dirs / "schem" / "walls.schem").is_file()

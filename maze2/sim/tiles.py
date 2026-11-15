@@ -2,7 +2,7 @@
 
 Directions are indexed N, E, S, W, U, D = 0..5. North is -Z, east +X, south +Z, west -X, up +Y, down -Y.
 
-Matching rule (from commands/maze2.txt): a cell `a` may sit on side `d` of a filled cell `b` when
+Matching rule (from maze2/src/maze2.mct): a cell `a` may sit on side `d` of a filled cell `b` when
 a.phys[d] is one of b.targets[opposite(d)]. The algorithm only checks that one half. Inputs must be
 reciprocal, which makes the other half (b.phys[opp] in a.targets[d]) hold whenever the first does.
 
@@ -64,7 +64,7 @@ def add(p: Pos, d: int) -> Pos:
 
 
 # ---------------------------------------------------------------------------------------- CSV input
-# The room sheet is parsed by rooms/rooms.py, the same code that builds the in-game lookups.
+# The room sheet is parsed by maze2/rooms/rooms.py, the same code that builds the in-game lookups.
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "rooms"))
 import rooms as sheet  # noqa: E402

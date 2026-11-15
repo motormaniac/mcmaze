@@ -1,2 +1,14 @@
 node_modules/
 .vscode/
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+
+# generated
+maze2/ir/
+maze2/schem/
+maze2/sim/fuzz/
+tools/mct/vscode/*.vsix

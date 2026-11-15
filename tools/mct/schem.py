@@ -1,8 +1,7 @@
 """Turns IR into a WorldEdit schematic of chain command blocks. See LANG.md. Run it through main.py:
 
-  cd py
-  uv run compile/main.py compile/ir/walls.irt     -- writes compile/out/walls.schem
-  uv run compile/main.py compile/in/walls.mct     -- same, compiling the .mct first
+  uv run poe mct maze2/ir/walls.irt     -- writes maze2/schem/walls.schem
+  uv run poe mct maze2/src/walls.mct    -- same, compiling the .mct first
   options: --width 16  --length 16  --gap 3  --track-output
 
 Output is a Sponge v3 .schem for Minecraft 1.21.10. Every block is a chain command block, and the

@@ -1,11 +1,13 @@
 """The command line for the .mct toolchain. See LANG.md.
 
-  cd py
-  uv run compile/main.py compile/in/walls.mct               -- .mct -> compile/out/walls.schem
-  uv run compile/main.py --ir compile/in/walls.mct          -- .mct -> compile/ir/walls.irt
-  uv run compile/main.py --ir --schem compile/in/walls.mct  -- .mct -> both of the above
-  uv run compile/main.py compile/ir/walls.irt               -- .irt -> compile/out/walls.schem
+  uv run poe mct maze2/src/walls.mct               -- .mct -> maze2/schem/walls.schem
+  uv run poe mct --ir maze2/src/walls.mct          -- .mct -> maze2/ir/walls.irt
+  uv run poe mct --ir --schem maze2/src/walls.mct  -- .mct -> both of the above
+  uv run poe mct maze2/ir/walls.irt                -- .irt -> maze2/schem/walls.schem
   options: -o PATH  --width 16  --length 16  --gap 3  --track-output
+
+Output goes to the ir/ and schem/ folders of the input's project: the folder that holds the input's
+src/ or ir/ folder, or else the folder the input is in.
 
 Like gcc, where each file starts depends on its extension: a .mct file goes through the compiler
 (compile.py) and then the schematic builder (schem.py), and a .irt file only goes through the builder.
@@ -19,9 +21,20 @@ from pathlib import Path
 from compile import CompileError, compile_source
 from schem import SchemError, layout, parse_ir, schematic
 
-HERE = Path(__file__).parent
-IR_DIR = HERE / "ir"
-OUT_DIR = HERE / "out"
+# a file in one of these folders belongs to the folder above it
+PROJECT_SUBDIRS = ("src", "ir")
+
+
+def project_dir(path: Path) -> Path:
+  """The folder whose ir/ and schem/ get the outputs for this input."""
+  parent = path.resolve().parent
+  return parent.parent if parent.name in PROJECT_SUBDIRS else parent
+
+def ir_path(path: Path) -> Path:
+  return project_dir(path) / "ir" / f"{path.stem}.irt"
+
+def schem_path(path: Path) -> Path:
+  return project_dir(path) / "schem" / f"{path.stem}.schem"
 
 
 def write_ir(ir: str, out_path: Path) -> None:
@@ -34,7 +47,7 @@ def build(path: Path, args: argparse.Namespace) -> None:
   if path.suffix == ".mct":
     ir = compile_source(path.read_text(encoding="utf-8"), str(path))
     if args.ir:
-      write_ir(ir, args.o or IR_DIR / f"{path.stem}.irt")
+      write_ir(ir, args.o or ir_path(path))
     if not args.schem:
       return
   else:
@@ -42,7 +55,7 @@ def build(path: Path, args: argparse.Namespace) -> None:
 
   commands = parse_ir(ir, path.name)
   blocks = layout(commands, args.width, args.length, args.gap, path.name)
-  out_path = args.o or OUT_DIR / f"{path.stem}.schem"
+  out_path = args.o or schem_path(path)
   out_path.parent.mkdir(parents=True, exist_ok=True)
   schematic(blocks, args.width, args.length, args.gap, args.track_output).save(out_path)
   empty = len(blocks) - len(commands)
@@ -50,12 +63,12 @@ def build(path: Path, args: argparse.Namespace) -> None:
   print(f"wrote {out_path} ({len(commands)} commands, {empty} empty blocks, {signs} signs)")
 
 def main(argv: list[str]) -> int:
-  parser = argparse.ArgumentParser(prog="uv run compile/main.py",
+  parser = argparse.ArgumentParser(prog="uv run poe mct",
     description="Compile .mct files to IR (.irt) and build WorldEdit schematics (.schem).")
   parser.add_argument("files", type=Path, nargs="+", metavar="file", help="a .mct source or .irt IR file")
-  parser.add_argument("--ir", action="store_true", help="write the IR of each .mct file to compile/ir/")
+  parser.add_argument("--ir", action="store_true", help="write the IR of each .mct file to the project's ir/")
   parser.add_argument("--schem", action="store_true",
-    help="write a schematic to compile/out/ (the default, unless --ir is given)")
+    help="write a schematic to the project's schem/ (the default, unless --ir is given)")
   parser.add_argument("-o", type=Path, metavar="PATH",
     help="write the output here (only with one input file and one of --ir/--schem)")
   parser.add_argument("--width", type=int, default=16, help="blocks in each row, east-west (x) (default 16)")

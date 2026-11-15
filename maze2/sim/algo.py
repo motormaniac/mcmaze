@@ -1,4 +1,4 @@
-"""A step-by-step model of the algorithm in commands/maze2.txt. One step = one BFS iteration = 1 gt.
+"""A step-by-step model of the algorithm in maze2/src/maze2.mct. One step = one BFS iteration = 1 gt.
 
 Modelled as the commands are written, with the fixes agreed on:
   * an unfilled neighbor (no node yet, or a node that has no tile yet) is skipped: any encoding fits

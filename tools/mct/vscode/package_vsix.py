@@ -1,7 +1,7 @@
 """Packages this folder as a .vsix that `code --install-extension` accepts. No dependencies.
 
-  uv run compile/vscode/package_vsix.py
-  code --install-extension compile/vscode/mct-syntax.vsix
+  uv run tools/mct/vscode/package_vsix.py
+  code --install-extension tools/mct/vscode/mct-syntax.vsix
 """
 
 import json

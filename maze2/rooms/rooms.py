@@ -1,19 +1,19 @@
 """Builds the maze2 lookup entities and the bulk place chain from the room sheet.
 
-  cd py
-  uv run rooms/rooms.py           -- download the sheet to rooms/rooms.csv, then build from it
-  uv run rooms/rooms.py some.csv  -- build from a CSV without downloading
+  uv run poe rooms           -- download the sheet to maze2/rooms/rooms.csv, then build from it
+  uv run poe rooms some.csv  -- build from a CSV without downloading
 
-Writes two IR files (see compile/LANG.md), which compile/main.py turns into schematics:
-  compile/ir/lookups.irt  kills the old lookups, then summons one lookup per room rotation
-  compile/ir/place.irt    places the structure of every graph node, picked by its ref
+Writes two IR files (see tools/mct/LANG.md), which `uv run poe mct` turns into schematics:
+  maze2/ir/lookups.irt  kills the old lookups, then summons one lookup per room rotation
+  maze2/ir/place.irt    places the structure of every graph node, picked by its ref
 
 Each row of the sheet is one structure in its default rotation. Each of its 4 rotations around Y
 becomes its own lookup, with ref = 4 * row index + rotation index (in ROTATIONS order).
 Rotating clockwise moves each side's encoding and target list from north to east, east to south, etc.
 Up and down never move.
 
-Encodings are numbered in order of first appearance, reading the rows top to bottom and each row
+The CONSTRAINT_ENCODING encoding (the maze boundary) is always id 0, wherever it appears. Every other
+encoding is numbered from 1 in order of first appearance, reading the rows top to bottom and each row
 left to right. Target lists shorter than TARGET_AMOUNT are padded with EMPTY_TARGET.
 Nothing is written if any row has an error, and every error is printed.
 """
@@ -36,7 +36,7 @@ SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:
 CSV_PATH = HERE / "rooms.csv"
 
 # where the IR goes
-IR_DIR = HERE.parent / "compile" / "ir"
+IR_DIR = HERE.parent / "ir"
 LOOKUPS_IR = IR_DIR / "lookups.irt"
 PLACE_IR = IR_DIR / "place.irt"
 
@@ -61,6 +61,10 @@ LOOKUP_POS = "-58.0 3.0 3.0" # absolute coordinates. Must have the same Y and Z 
 NEW_TAG = "new"
 CONSTRAINT_TAG = "constraint"
 CATEGORY_PREFIX = "cat_"
+
+# the encoding constraint nodes have on every side. Always id 0 ($CONSTRAINT_ENCODING_TYPE in constraint.mct).
+CONSTRAINT_ENCODING = "constraint"
+CONSTRAINT_ID = 0
 
 # scoreboards (keep in sync with maze2.mct)
 SIDES = ("north", "east", "south", "west", "up", "down")
@@ -179,8 +183,9 @@ def parse_rooms(rows: list[list[str]]) -> tuple[list[Room], list[str]]:
 
     rooms.append(Room(sheet_row, name, weight, categories, sides, targets))
 
-  # a target nothing can ever have would never match, so it's almost certainly a typo
-  known = {encoding for room in rooms for encoding in room.sides}
+  # a target nothing can ever have would never match, so it's almost certainly a typo.
+  # Constraint nodes have the constraint encoding, so a room can target it without any room having it.
+  known = {CONSTRAINT_ENCODING} | {encoding for room in rooms for encoding in room.sides}
   for room in rooms:
     for side, items in zip(SIDES, room.targets):
       for item in items:
@@ -192,12 +197,20 @@ def parse_rooms(rows: list[list[str]]) -> tuple[list[Room], list[str]]:
   return rooms, errors
 
 def encoding_ids(rooms: list[Room]) -> dict[str, int]:
-  """Numbers every encoding from 0 in order of first appearance, row by row, left to right."""
+  """Gives the constraint encoding CONSTRAINT_ID, and numbers every other encoding from
+  CONSTRAINT_ID + 1 in order of first appearance, row by row, left to right."""
   ids: dict[str, int] = {}
+  next_id = CONSTRAINT_ID + 1
   for room in rooms:
     for encoding in room.sides + [item for items in room.targets for item in items]:
-      ids.setdefault(encoding, len(ids))
-  return ids
+      if encoding in ids:
+        continue
+      if encoding == CONSTRAINT_ENCODING:
+        ids[encoding] = CONSTRAINT_ID
+      else:
+        ids[encoding] = next_id
+        next_id += 1
+  return dict(sorted(ids.items(), key=lambda item: item[1]))
 
 def rotate[T](values: list[T], turns: int) -> list[T]:
   """Turns per-side values clockwise: the north value moves to east, and so on. Up and down stay."""
@@ -270,7 +283,7 @@ def build(csv_path: Path) -> int:
   return 0
 
 def main(argv: list[str]) -> int:
-  parser = argparse.ArgumentParser(prog="uv run rooms/rooms.py",
+  parser = argparse.ArgumentParser(prog="uv run poe rooms",
     description="Build the maze2 lookups and place chains (.irt) from the room sheet.")
   parser.add_argument("csv", type=Path, nargs="?",
     help=f"a CSV export of the sheet (default: download the sheet to {CSV_PATH.name} first)")

@@ -6,9 +6,8 @@ A TextMate grammar for `.mct` files (the language in [../LANG.md](../LANG.md)), 
 
 Build the package, install it, then run **Developer: Reload Window** in any open VS Code window.
 
-    cd py
-    uv run compile/vscode/package_vsix.py
-    code --install-extension compile/vscode/mct-syntax.vsix
+    uv run tools/mct/vscode/package_vsix.py
+    code --install-extension tools/mct/vscode/mct-syntax.vsix
 
 After editing the grammar, run the same two commands again and reload. To remove it, run `code --uninstall-extension local.mct-syntax`.
 

@@ -26,7 +26,7 @@ south of it.
 |---|---|
 | `S` | start node: run init here. It's cell (0,0,0). Don't place anything. |
 | `.` | an empty cell the algorithm fills. Don't place anything. |
-| `C` | a constraint node you place: tag `constraint`, `target_<side>1 = 0` (wall) on all six sides, `target_<side>2..6 = -1` |
+| `C` | a constraint node you place: tag `constraint`, `target_<side>1 = 0` (`constraint`) on all six sides, `target_<side>2..6 = -1` |
 | blank | nothing |
 
 The grid is the 6 cells of layers y = 0 and y = 1. Layers y = -1 and y = 2 are the bottom and top
@@ -37,12 +37,13 @@ bounds.
 Put these 35 rows in the sheet (they're also in [test_rooms.csv](test_rooms.csv)). Every room has
 weight 0. Structure names don't matter.
 
-Encodings get numbered in order of first appearance. With only these rows, the ids and `visualize`
-wool are:
+The walls use the `constraint` encoding, so rooms can sit against constraint nodes (which only accept
+id 0). `constraint` is always id 0, and the other encodings are numbered from 1 in order of first
+appearance. With only these rows, the ids and `visualize` wool are:
 
 | id | encoding | wool |
 |---|---|---|
-| 0 | wall | white |
+| 0 | constraint (wall) | white |
 | 1 | open | orange |
 | 2 | hatch | magenta |
 | 3 | join | light blue |
@@ -52,46 +53,46 @@ wool are:
 | 7 | end_up | gray |
 | 8 | end_down | light gray |
 
-If the sheet has other rooms above these, the ids shift. Constraints must target whatever id `wall`
-gets.
+If the sheet has other rooms above these, ids 1–8 shift, but `constraint` stays 0, so the constraint
+nodes don't change.
 
 | Room Weight | Categories | Structure Name | North | East | South | West | Up | Down | Target North | Target East | Target South | Target West | Target Up | Target Down |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 0 | t_basic | `test:basic_closed_bottom` | wall | wall | wall | wall | open | wall | wall | wall | wall | wall | open | wall |
-| 0 | t_basic | `test:basic_deadend_bottom` | open | wall | wall | wall | open | wall | open | wall | wall | wall | open | wall |
-| 0 | t_basic | `test:basic_corner_bottom` | open | open | wall | wall | open | wall | open | open | wall | wall | open | wall |
-| 0 | t_basic, t_nofit | `test:basic_straight_bottom` | open | wall | open | wall | open | wall | open | wall | open | wall | open | wall |
-| 0 | t_basic, t_nofit | `test:basic_tee_bottom` | open | open | open | wall | open | wall | open | open | open | wall | open | wall |
-| 0 | t_basic, t_nofit | `test:basic_cross_bottom` | open | open | open | open | open | wall | open | open | open | open | open | wall |
-| 0 | t_basic | `test:basic_closed_top` | wall | wall | wall | wall | wall | open | wall | wall | wall | wall | wall | open |
-| 0 | t_basic | `test:basic_deadend_top` | open | wall | wall | wall | wall | open | open | wall | wall | wall | wall | open |
-| 0 | t_basic | `test:basic_corner_top` | open | open | wall | wall | wall | open | open | open | wall | wall | wall | open |
-| 0 | t_basic, t_nofit | `test:basic_straight_top` | open | wall | open | wall | wall | open | open | wall | open | wall | wall | open |
-| 0 | t_basic, t_nofit | `test:basic_tee_top` | open | open | open | wall | wall | open | open | open | open | wall | wall | open |
-| 0 | t_basic, t_nofit | `test:basic_cross_top` | open | open | open | open | wall | open | open | open | open | open | wall | open |
-| 0 | t_slots | `test:slots_closed_bottom` | wall | wall | wall | wall | hatch | wall | open, wall, join | open, wall, join | open, wall, join | open, wall, join | join, hatch, open | open, wall, join |
-| 0 | t_slots | `test:slots_deadend_bottom` | door | wall | wall | wall | hatch | wall | join, open, door | open, wall, join | open, wall, join | open, wall, join | join, hatch, open | open, wall, join |
-| 0 | t_slots | `test:slots_corner_bottom` | door | door | wall | wall | hatch | wall | join, open, door | join, open, door | open, wall, join | open, wall, join | join, hatch, open | open, wall, join |
-| 0 | t_slots | `test:slots_straight_bottom` | door | wall | door | wall | hatch | wall | join, open, door | open, wall, join | join, open, door | open, wall, join | join, hatch, open | open, wall, join |
-| 0 | t_slots | `test:slots_tee_bottom` | door | door | door | wall | hatch | wall | join, open, door | join, open, door | join, open, door | open, wall, join | join, hatch, open | open, wall, join |
-| 0 | t_slots | `test:slots_cross_bottom` | door | door | door | door | hatch | wall | join, open, door | join, open, door | join, open, door | join, open, door | join, hatch, open | open, wall, join |
-| 0 | t_slots | `test:slots_closed_top` | wall | wall | wall | wall | wall | hatch | open, wall, join | open, wall, join | open, wall, join | open, wall, join | open, wall, join | join, hatch, open |
-| 0 | t_slots | `test:slots_deadend_top` | door | wall | wall | wall | wall | hatch | join, open, door | open, wall, join | open, wall, join | open, wall, join | open, wall, join | join, hatch, open |
-| 0 | t_slots | `test:slots_corner_top` | door | door | wall | wall | wall | hatch | join, open, door | join, open, door | open, wall, join | open, wall, join | open, wall, join | join, hatch, open |
-| 0 | t_slots | `test:slots_straight_top` | door | wall | door | wall | wall | hatch | join, open, door | open, wall, join | join, open, door | open, wall, join | open, wall, join | join, hatch, open |
-| 0 | t_slots | `test:slots_tee_top` | door | door | door | wall | wall | hatch | join, open, door | join, open, door | join, open, door | open, wall, join | open, wall, join | join, hatch, open |
-| 0 | t_slots | `test:slots_cross_top` | door | door | door | door | wall | hatch | join, open, door | join, open, door | join, open, door | join, open, door | open, wall, join | join, hatch, open |
-| 0 | t_domino | `test:domino_half` | join | wall | wall | wall | wall | wall | join | wall | wall | wall | wall | wall |
-| 0 | t_domino | `test:domino_half_up` | wall | wall | wall | wall | join | wall | wall | wall | wall | wall | join | wall |
-| 0 | t_domino | `test:domino_half_down` | wall | wall | wall | wall | wall | join | wall | wall | wall | wall | wall | join |
-| 0 | t_tri | `test:tri_end_side` | end_side | wall | wall | wall | wall | wall | mid | wall | wall | wall | wall | wall |
-| 0 | t_tri | `test:tri_end_up` | wall | wall | wall | wall | end_up | wall | wall | wall | wall | wall | mid | wall |
-| 0 | t_tri | `test:tri_end_down` | wall | wall | wall | wall | wall | end_down | wall | wall | wall | wall | wall | mid |
-| 0 | t_tri | `test:tri_mid_straight` | mid | wall | mid | wall | wall | wall | end_up, end_side, end_down | wall | end_up, end_side, end_down | wall | wall | wall |
-| 0 | t_tri | `test:tri_mid_corner` | mid | mid | wall | wall | wall | wall | end_up, end_side, end_down | end_up, end_side, end_down | wall | wall | wall | wall |
-| 0 | t_tri | `test:tri_mid_side_up` | mid | wall | wall | wall | mid | wall | end_up, end_side, end_down | wall | wall | wall | end_up, end_side, end_down | wall |
-| 0 | t_tri | `test:tri_mid_side_down` | mid | wall | wall | wall | wall | mid | end_up, end_side, end_down | wall | wall | wall | wall | end_up, end_side, end_down |
-| 0 | t_tri | `test:tri_mid_up_down` | wall | wall | wall | wall | mid | mid | wall | wall | wall | wall | end_up, end_side, end_down | end_up, end_side, end_down |
+| 0 | t_basic | `test:basic_closed_bottom` | constraint | constraint | constraint | constraint | open | constraint | constraint | constraint | constraint | constraint | open | constraint |
+| 0 | t_basic | `test:basic_deadend_bottom` | open | constraint | constraint | constraint | open | constraint | open | constraint | constraint | constraint | open | constraint |
+| 0 | t_basic | `test:basic_corner_bottom` | open | open | constraint | constraint | open | constraint | open | open | constraint | constraint | open | constraint |
+| 0 | t_basic, t_nofit | `test:basic_straight_bottom` | open | constraint | open | constraint | open | constraint | open | constraint | open | constraint | open | constraint |
+| 0 | t_basic, t_nofit | `test:basic_tee_bottom` | open | open | open | constraint | open | constraint | open | open | open | constraint | open | constraint |
+| 0 | t_basic, t_nofit | `test:basic_cross_bottom` | open | open | open | open | open | constraint | open | open | open | open | open | constraint |
+| 0 | t_basic | `test:basic_closed_top` | constraint | constraint | constraint | constraint | constraint | open | constraint | constraint | constraint | constraint | constraint | open |
+| 0 | t_basic | `test:basic_deadend_top` | open | constraint | constraint | constraint | constraint | open | open | constraint | constraint | constraint | constraint | open |
+| 0 | t_basic | `test:basic_corner_top` | open | open | constraint | constraint | constraint | open | open | open | constraint | constraint | constraint | open |
+| 0 | t_basic, t_nofit | `test:basic_straight_top` | open | constraint | open | constraint | constraint | open | open | constraint | open | constraint | constraint | open |
+| 0 | t_basic, t_nofit | `test:basic_tee_top` | open | open | open | constraint | constraint | open | open | open | open | constraint | constraint | open |
+| 0 | t_basic, t_nofit | `test:basic_cross_top` | open | open | open | open | constraint | open | open | open | open | open | constraint | open |
+| 0 | t_slots | `test:slots_closed_bottom` | constraint | constraint | constraint | constraint | hatch | constraint | open, constraint, join | open, constraint, join | open, constraint, join | open, constraint, join | join, hatch, open | open, constraint, join |
+| 0 | t_slots | `test:slots_deadend_bottom` | door | constraint | constraint | constraint | hatch | constraint | join, open, door | open, constraint, join | open, constraint, join | open, constraint, join | join, hatch, open | open, constraint, join |
+| 0 | t_slots | `test:slots_corner_bottom` | door | door | constraint | constraint | hatch | constraint | join, open, door | join, open, door | open, constraint, join | open, constraint, join | join, hatch, open | open, constraint, join |
+| 0 | t_slots | `test:slots_straight_bottom` | door | constraint | door | constraint | hatch | constraint | join, open, door | open, constraint, join | join, open, door | open, constraint, join | join, hatch, open | open, constraint, join |
+| 0 | t_slots | `test:slots_tee_bottom` | door | door | door | constraint | hatch | constraint | join, open, door | join, open, door | join, open, door | open, constraint, join | join, hatch, open | open, constraint, join |
+| 0 | t_slots | `test:slots_cross_bottom` | door | door | door | door | hatch | constraint | join, open, door | join, open, door | join, open, door | join, open, door | join, hatch, open | open, constraint, join |
+| 0 | t_slots | `test:slots_closed_top` | constraint | constraint | constraint | constraint | constraint | hatch | open, constraint, join | open, constraint, join | open, constraint, join | open, constraint, join | open, constraint, join | join, hatch, open |
+| 0 | t_slots | `test:slots_deadend_top` | door | constraint | constraint | constraint | constraint | hatch | join, open, door | open, constraint, join | open, constraint, join | open, constraint, join | open, constraint, join | join, hatch, open |
+| 0 | t_slots | `test:slots_corner_top` | door | door | constraint | constraint | constraint | hatch | join, open, door | join, open, door | open, constraint, join | open, constraint, join | open, constraint, join | join, hatch, open |
+| 0 | t_slots | `test:slots_straight_top` | door | constraint | door | constraint | constraint | hatch | join, open, door | open, constraint, join | join, open, door | open, constraint, join | open, constraint, join | join, hatch, open |
+| 0 | t_slots | `test:slots_tee_top` | door | door | door | constraint | constraint | hatch | join, open, door | join, open, door | join, open, door | open, constraint, join | open, constraint, join | join, hatch, open |
+| 0 | t_slots | `test:slots_cross_top` | door | door | door | door | constraint | hatch | join, open, door | join, open, door | join, open, door | join, open, door | open, constraint, join | join, hatch, open |
+| 0 | t_domino | `test:domino_half` | join | constraint | constraint | constraint | constraint | constraint | join | constraint | constraint | constraint | constraint | constraint |
+| 0 | t_domino | `test:domino_half_up` | constraint | constraint | constraint | constraint | join | constraint | constraint | constraint | constraint | constraint | join | constraint |
+| 0 | t_domino | `test:domino_half_down` | constraint | constraint | constraint | constraint | constraint | join | constraint | constraint | constraint | constraint | constraint | join |
+| 0 | t_tri | `test:tri_end_side` | end_side | constraint | constraint | constraint | constraint | constraint | mid | constraint | constraint | constraint | constraint | constraint |
+| 0 | t_tri | `test:tri_end_up` | constraint | constraint | constraint | constraint | end_up | constraint | constraint | constraint | constraint | constraint | mid | constraint |
+| 0 | t_tri | `test:tri_end_down` | constraint | constraint | constraint | constraint | constraint | end_down | constraint | constraint | constraint | constraint | constraint | mid |
+| 0 | t_tri | `test:tri_mid_straight` | mid | constraint | mid | constraint | constraint | constraint | end_up, end_side, end_down | constraint | end_up, end_side, end_down | constraint | constraint | constraint |
+| 0 | t_tri | `test:tri_mid_corner` | mid | mid | constraint | constraint | constraint | constraint | end_up, end_side, end_down | end_up, end_side, end_down | constraint | constraint | constraint | constraint |
+| 0 | t_tri | `test:tri_mid_side_up` | mid | constraint | constraint | constraint | mid | constraint | end_up, end_side, end_down | constraint | constraint | constraint | end_up, end_side, end_down | constraint |
+| 0 | t_tri | `test:tri_mid_side_down` | mid | constraint | constraint | constraint | constraint | mid | end_up, end_side, end_down | constraint | constraint | constraint | constraint | end_up, end_side, end_down |
+| 0 | t_tri | `test:tri_mid_up_down` | constraint | constraint | constraint | constraint | mid | mid | constraint | constraint | constraint | constraint | end_up, end_side, end_down | end_up, end_side, end_down |
 
 ## Each run
 
@@ -301,8 +302,8 @@ The rooms are two kinds of pieces:
 - **Middles** have two `mid` faces (pink), in every pairing: straight, corner, side + up, side + down,
   up + down. A mid face accepts `end_up, end_side, end_down`, in that slot order.
 
-Every other face is a white wall that accepts only wall. Ends can't join ends, and middles can't join
-middles, so every finished piece is end, middle, end: **3 cells** in a straight line or an L, flat or
+Every other face is a white wall (`constraint`) that accepts only `constraint`. Ends can't join
+ends, and middles can't join middles, so every finished piece is end, middle, end: **3 cells** in a straight line or an L, flat or
 bent between the layers. Which slot of the mid list matches depends on the end's direction: an end below
 the middle matches slot 1, beside it slot 2, above it slot 3.
 

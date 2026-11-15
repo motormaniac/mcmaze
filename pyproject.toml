@@ -1,0 +1,27 @@
+[project]
+name = "mazegenerate-scripts"
+version = "0.1.0"
+description = "Helper scripts that generate Minecraft commands for the maze project"
+requires-python = ">=3.14"
+dependencies = [
+    "nbtlib>=2.0.4",
+    "pyyaml>=6.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "poethepoet>=0.49.0",
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["tools/mct", "maze2/sim"]
+testpaths = ["tools/mct/tests", "maze2/sim/tests"]
+
+[tool.poe.tasks]
+mct = { cmd = "python ${POE_ROOT}/tools/mct/main.py", cwd = "${POE_PWD}", help = "Compile .mct to IR (.irt) and build schematics; --ir writes IR, --schem a schematic" }
+rooms = { cmd = "python ${POE_ROOT}/maze2/rooms/rooms.py", cwd = "${POE_PWD}", help = "Build maze2/ir/lookups.irt and place.irt from the room sheet; no file downloads the sheet to maze2/rooms/rooms.csv first" }
+cases = { cmd = "python ${POE_ROOT}/maze2/manual_test/make_cases.py", help = "Rewrite maze2/manual_test/test_rooms.csv" }
+sim = { cmd = "python ${POE_ROOT}/maze2/sim/simulate.py", cwd = "${POE_PWD}", help = "Simulate the maze2 algorithm (check, run, fuzz)" }
+mct-all = { cmd = "python tools/mct/main.py --ir --schem maze2/src/init.mct maze2/src/maze2.mct maze2/src/constraint.mct maze2/src/visualize.mct maze2/ir/lookups.irt maze2/ir/place.irt", help = "Build every maze2 schematic from the existing IR and .mct files (no download)" }
+build = { sequence = ["rooms", "mct-all"], help = "Download the room sheet, then build every maze2 IR file and schematic" }

@@ -75,21 +75,42 @@ table $opposite (
   down: up,
 )
 
--- NOT UPDATEDDDD!!!!!
+-- # Spawn start point
+--[
+give @p minecraft:bat_spawn_egg[item_name=start,entity_data={id:"minecraft:bat",CustomName:start}]
+]--
+$START = type=bat,name=start;
+
+-- Turn the start bat into the graph node that $init pushes first
+func $spawn_start () (
+  #-- Spawn start point
+  execute as @e[$START] at @s run summon item_display ~ ~ ~ {CustomName:graph,$ITEM_DISPLAY_NBT,Tags:[start]};
+  !conditional
+  kill @e[$START];
+)
+
+-- # Debug: show graph nodes
+-- Diamonds for normal nodes, netherite for constraints
+func $show_graph () (
+  #-- Show graph nodes
+  execute as @e[$GRAPH] run data merge entity @s {view_range:1,width:1,height:1};
+  execute as @e[$GRAPH,tag=!constraint] run data merge entity @s {item:{id:diamond}};
+  execute as @e[$GRAPH,tag=constraint] run data merge entity @s {item:{id:netherite_ingot}};
+  execute as @e[$GRAPH] at @s align xyz run tp @s ~0.5 ~0.5 ~0.5;
+)
+
 -- # Init
+-- Run after $spawn_start has placed the start node
 func $init () (
-  -- reset queue
+  -- reset queue: remove the last run's nodes, but keep the constraints and the start node
+  kill @e[$GRAPH,tag=!constraint,tag=!start];
   scoreboard players set .queueSize var 0;
   scoreboard players set @e[$GRAPH] i -1;
-  tag @e[$GRAPH,tag=select] remove select;
-
   -- push starting node to queue
-  summon item_display ~ ~ ~ {CustomName:graph,$ITEM_DISPLAY_NBT,Tags:[new]};
-  scoreboard players operation @e[$GRAPH,tag=new] i = .queueSize var;
+  scoreboard players operation @e[$GRAPH,tag=start] i = .queueSize var;
   scoreboard players add .queueSize var 1;
-  -- set initial position (use 0 based indexing)
-  scoreboard players set @e[$GRAPH,tag=new] edit 0;
-  tag @e[$GRAPH,tag=new] remove new;
+  scoreboard players set @e[$GRAPH,tag=start] edit 0;
+  tag @e[$GRAPH,tag=start] remove start;
 )
 
 
