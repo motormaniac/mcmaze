@@ -8,22 +8,22 @@ import pytest
 from algo import Algorithm, Node, Queue
 from simulate import main, random_problem, reachable
 from solver import check_filling, solve
-from tiles import (D, E, N, S, U, W, WALL, Problem, Tile, TileError, lint, read_csv,
+from tiles import (D, E, N, S, U, W, WALL, Problem, Tile, TileError, encoding_ids, lint, read_csv, sheet,
                    reciprocity_errors, rotate, rotations, write_csv)
 
 
-def tile(name: str, phys: list[str], targets: list[set[str]]) -> Tile:
-  return Tile(name, 0, tuple(phys), tuple(frozenset(t) for t in targets))
+def tile(name: str, phys: list[str], targets: list[list[str]], categories: tuple[str, ...] = ()) -> Tile:
+  return Tile(name, 0, tuple(phys), tuple(tuple(t) for t in targets), categories)
 
 def walled(name: str, **open_faces: str) -> Tile:
   """A tile that is `wall` (targeting `wall`) everywhere except the named faces, which use the
   given encoding and target themselves."""
   dirs = ["north", "east", "south", "west", "up", "down"]
   phys = [open_faces.get(d, WALL) for d in dirs]
-  return tile(name, phys, [{e} for e in phys])
+  return tile(name, phys, [[e] for e in phys])
 
 OPEN_4WAY = tile("maze:open_4way", ["open"] * 4 + ["ceiling", "floor"],
-                 [{"open"}] * 4 + [{"floor"}, {"ceiling"}])
+                 [["open"]] * 4 + [["floor"], ["ceiling"]])
 HALF = walled("half", north="join")                      # a horizontal domino half
 HALF_UP = walled("half_up", up="join")
 HALF_DOWN = walled("half_down", down="join")
@@ -36,51 +36,64 @@ def problem(base: list[Tile], size: tuple[int, int, int], *constraints) -> Probl
 # -------------------------------------------------------------------------------------------- tiles
 
 def test_rotate_moves_north_to_east_and_keeps_vertical():
-  t = tile("t", ["n", "e", "s", "w", "u", "d"], [{"tn"}, {"te"}, {"ts"}, {"tw"}, {"tu"}, {"td"}])
+  t = tile("t", ["n", "e", "s", "w", "u", "d"], [["tn"], ["te"], ["ts"], ["tw"], ["tu"], ["td"]])
   r = rotate(t)
   assert r.rotation == 90
   assert r.phys == ("w", "n", "e", "s", "u", "d")
-  assert r.targets[E] == {"tn"} and r.targets[U] == {"tu"}
+  assert r.targets[E] == ("tn",) and r.targets[U] == ("tu",)
   assert rotate(rotate(rotate(r))).phys == t.phys
 
-def test_reads_the_spreadsheet_layout(tmp_path: Path):
-  path = tmp_path / "t.csv"
+def test_rotations_match_the_lookups_rooms_py_builds():
+  room = sheet.Room(3, "t", 0, [], ["n", "e", "s", "w", "u", "d"],
+                    [["tn"], ["te", "x"], ["ts"], ["tw"], ["tu"], ["td"]])
+  t = tile("t", room.sides, room.targets)
+  for lookup, r in zip(sheet.lookups([room]), rotations(t)):
+    assert tuple(lookup.sides) == r.phys
+    assert tuple(tuple(x) for x in lookup.targets) == r.targets
+
+def test_reads_the_room_sheet(tmp_path: Path):
+  path = tmp_path / "rooms.csv"
   path.write_text(
-    ',"Instructions: ...",This Cell\'s Encoding,,,,,,Target Encoding1,,,,,,Target Encoding 2,,,,,,'
-    'Target Encoding 3,,,,,,\n'
-    'Error?,Structure Name,North,East,South,West,Up,Down,North,East,South,West,Up,Down,North,East,'
-    'South,West,Up,Down,North,East,South,West,Up,Down,\n'
-    ',maze:open_4way,open,open,open,open,ceiling,floor,open,open,open,open,floor,ceiling,'
-    ',,,,,,,,,,,,FALSE\n'
-    ',,,,,,,,,,,,,,,,,,,,,,,,,,FALSE\n', encoding="utf-8")
+    "Room Weight,Categories,Structure Name,North,East,South,West,Up,Down,"
+    "Target North,Target East,Target South,Target West,Target Up,Target Down\n"
+    "0,,maze:open_4way,open,open,open,open,ceiling,floor,open,open,open,open,floor,ceiling\n"
+    "0,,,,,,,,,,,,,,\n", encoding="utf-8")
   tiles = read_csv(path)
   assert len(tiles) == 4
   assert tiles[0] == OPEN_4WAY
 
-def test_csv_round_trip_keeps_optional_targets(tmp_path: Path):
-  t = tile("t", ["a", "b", "c", "d", "e", "f"], [{"a", "b", "c"}, {"b"}, {"c", "a"}, {"d"}, {"e"}, {"f"}])
-  write_csv([t, SOLID], tmp_path / "t.csv")
-  assert read_csv(tmp_path / "t.csv")[::4] == [t, SOLID]
+def test_csv_round_trip_keeps_target_order_and_categories(tmp_path: Path):
+  t = tile("t", ["a", "b", "c", "d", "e", "f"], [["c", "a", "b"], ["b"], ["c", "a"], ["d"], ["e"], ["f"]],
+           ("one", "two"))
+  solid = tile("solid", [WALL] * 6, [[WALL]] * 6, ("two",))
+  write_csv([t, solid], tmp_path / "t.csv")
+  back = read_csv(tmp_path / "t.csv")
+  assert back[::4] == [t, solid]
+  assert back[0].targets[N] == ("c", "a", "b")
+  assert back[0].categories == ("one", "two")
+  assert read_csv(tmp_path / "t.csv", ["one"])[::4] == [t]
+  assert read_csv(tmp_path / "t.csv", ["two"])[::4] == [t, solid]
+  with pytest.raises(TileError, match="no rooms in categories"):
+    read_csv(tmp_path / "t.csv", ["three"])
+  assert encoding_ids(tmp_path / "t.csv")["a"] == 0
 
-def test_blank_target_1_is_rejected(tmp_path: Path):
+def test_sheet_errors_are_reported(tmp_path: Path):
   path = tmp_path / "t.csv"
-  write_csv([SOLID], path)
-  text = path.read_text().replace(",solid," + "wall," * 6 + "wall,", ",solid," + "wall," * 6 + ",")
-  path.write_text(text)
-  with pytest.raises(TileError, match="blank Target 1 on north"):
+  write_csv([tile("solid", [WALL] * 6, [[WALL]] * 5 + [[]])], path)
+  with pytest.raises(TileError, match="down target list is empty"):
     read_csv(path)
 
 def test_reciprocity():
   assert reciprocity_errors(problem([OPEN_4WAY, HALF, SOLID], (1, 1, 1)).tiles) == []
   # 'x' accepts 'y' on the north, but the 'y' face doesn't accept 'x' back
-  bad = tile("bad", ["x", WALL, "y", WALL, WALL, WALL], [{"y"}, {WALL}, {"y"}, {WALL}, {WALL}, {WALL}])
+  bad = tile("bad", ["x", WALL, "y", WALL, WALL, WALL], [["y"], [WALL], ["y"], [WALL], [WALL], [WALL]])
   assert reciprocity_errors(rotations(bad))
   # a wall face that doesn't target wall can't be reciprocal with a constraint
-  leaky = tile("leaky", [WALL] * 6, [{"open"}] + [{WALL}] * 5)
+  leaky = tile("leaky", [WALL] * 6, [["open"]] + [[WALL]] * 5)
   assert any("vs wall" in e for e in reciprocity_errors(rotations(leaky)))
 
 def test_lint_catches_near_identical_encodings():
-  t = tile("t", ["Wall", WALL, WALL, WALL, WALL, WALL], [{"Wall"}] + [{WALL}] * 5)
+  t = tile("t", ["Wall", WALL, WALL, WALL, WALL, WALL], [["Wall"]] + [[WALL]] * 5)
   assert any("case/whitespace" in n for n in lint(rotations(t)))
 
 
@@ -180,7 +193,7 @@ def test_run_command_reports_unsolvable(tmp_path: Path, capsys):
   assert "5 passed LIMIT=4" in out
 
 def test_run_command_rejects_nonreciprocal(tmp_path: Path):
-  leaky = tile("leaky", [WALL] * 6, [{"open"}] + [{WALL}] * 5)
-  write_csv([leaky], tmp_path / "leaky.csv")
+  leaky = tile("leaky", [WALL] * 6, [["open"]] + [[WALL]] * 5)
+  write_csv([leaky, OPEN_4WAY], tmp_path / "leaky.csv")
   with pytest.raises(SystemExit):
     main(["run", str(tmp_path / "leaky.csv"), "--size", "1", "1", "1"])

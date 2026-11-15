@@ -11,7 +11,9 @@ target only `wall`, on every side.
 """
 
 import csv
-from dataclasses import dataclass
+import io
+import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 
 DIRS = ("north", "east", "south", "west", "up", "down")
@@ -33,7 +35,8 @@ class Tile:
   name: str
   rotation: int                          # degrees clockwise seen from above: 0, 90, 180, 270
   phys: tuple[str, ...]                  # 6 encodings, indexed by direction
-  targets: tuple[frozenset[str], ...]    # 6 non-empty sets of up to 3 encodings
+  targets: tuple[tuple[str, ...], ...]   # 6 non-empty target lists, in slot order
+  categories: tuple[str, ...] = field(default=(), compare=False)
 
   @property
   def label(self) -> str:
@@ -44,7 +47,8 @@ def rotate(tile: Tile) -> Tile:
   """Turns a tile 90 degrees clockwise seen from above: what faced north now faces east."""
   def turn(faces: tuple) -> tuple:
     return (faces[W], faces[N], faces[E], faces[S], faces[U], faces[D])
-  return Tile(tile.name, (tile.rotation + 90) % 360, turn(tile.phys), turn(tile.targets))
+  return Tile(tile.name, (tile.rotation + 90) % 360, turn(tile.phys), turn(tile.targets),
+              tile.categories)
 
 
 def rotations(tile: Tile) -> list[Tile]:
@@ -60,59 +64,51 @@ def add(p: Pos, d: int) -> Pos:
 
 
 # ---------------------------------------------------------------------------------------- CSV input
+# The room sheet is parsed by rooms/rooms.py, the same code that builds the in-game lookups.
 
-HEADER_NAME = "Structure Name"
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "rooms"))
+import rooms as sheet  # noqa: E402
+
+WOOL = ("white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray",
+        "cyan", "purple", "blue", "brown", "green", "red", "black")  # visualize.mct colors by id
 
 
-def read_csv(path: Path) -> list[Tile]:
-  """Reads cell types in the spreadsheet layout and returns every rotation of each.
+def read_rooms(path: Path) -> list["sheet.Room"]:
+  rows = list(csv.reader(io.StringIO(path.read_text(encoding="utf-8-sig"))))
+  rooms, errors = sheet.parse_rooms(rows)
+  if errors:
+    raise TileError(f"{path}:\n  " + "\n  ".join(errors))
+  return rooms
 
-  Layout: column A is the (ignored) Error? column, B the structure name, C-H this cell's encodings,
-  I-N target 1, O-T target 2 (optional), U-Z target 3 (optional), each block N E S W Up Down. Data
-  starts after the row whose column B is "Structure Name". Cell text is used exactly as written.
-  """
-  with open(path, newline="", encoding="utf-8-sig") as f:
-    rows = list(csv.reader(f))
-  start = next((i + 1 for i, row in enumerate(rows) if len(row) > 1 and row[1] == HEADER_NAME), None)
-  if start is None:
-    raise TileError(f"{path}: no header row with '{HEADER_NAME}' in column B")
-  base: list[Tile] = []
-  for line, row in enumerate(rows[start:], start + 1):
-    row = row + [""] * (26 - len(row))
-    name = row[1]
-    if name == "":
-      if any(cell != "" for cell in row[2:26]):
-        raise TileError(f"{path}:{line}: encodings without a structure name")
-      continue
-    phys = tuple(row[2:8])
-    if "" in phys:
-      raise TileError(f"{path}:{line}: {name} has a blank encoding on {DIRS[phys.index('')]}")
-    targets = []
-    for d in range(6):
-      first = row[8 + d]
-      if first == "":
-        raise TileError(f"{path}:{line}: {name} has a blank Target 1 on {DIRS[d]}")
-      extra = (row[14 + d], row[20 + d])
-      targets.append(frozenset([first, *(t for t in extra if t != "")]))
-    base.append(Tile(name, 0, phys, tuple(targets)))
-  if not base:
-    raise TileError(f"{path}: no cell types")
-  return [r for tile in base for r in rotations(tile)]
+
+def read_csv(path: Path, categories: list[str] | None = None) -> list[Tile]:
+  """Reads the room sheet and returns every rotation of each room. With `categories`, only rooms
+  tagged with at least one of them are kept (the rest are disabled in game)."""
+  rooms = read_rooms(path)
+  if categories is not None:
+    rooms = [r for r in rooms if set(r.categories) & set(categories)]
+    if not rooms:
+      raise TileError(f"{path}: no rooms in categories {categories}")
+  base = [Tile(r.name, 0, tuple(r.sides), tuple(tuple(t) for t in r.targets), tuple(r.categories))
+          for r in rooms]
+  return [rot for t in base for rot in rotations(t)]
+
+
+def encoding_ids(path: Path) -> dict[str, int]:
+  """The in-game number of every encoding, numbered over the whole sheet."""
+  return sheet.encoding_ids(read_rooms(path))
 
 
 def write_csv(base: list[Tile], path: Path) -> None:
-  """Writes cell types (default rotation only) in the spreadsheet layout."""
-  blank = [""] * 5
-  header1 = ["", "", "This Cell's Encoding", *blank, "Target Encoding1", *blank,
-             "Target Encoding 2 (Optional)", *blank, "Target Encoding 3 (Optional)", *blank]
-  header2 = ["Error?", HEADER_NAME, *(["North", "East", "South", "West", "Up", "Down"] * 4)]
+  """Writes rooms (default rotation only) in the room sheet layout, with weight 0."""
+  sides = ["North", "East", "South", "West", "Up", "Down"]
+  header = ["Room Weight", "Categories", "Structure Name", *sides, *(f"Target {s}" for s in sides)]
   with open(path, "w", newline="", encoding="utf-8") as f:
     out = csv.writer(f)
-    out.writerow(header1)
-    out.writerow(header2)
+    out.writerow(header)
     for tile in base:
-      slots = [sorted(t) + ["", ""] for t in tile.targets]
-      out.writerow(["", tile.name, *tile.phys, *(slots[d][k] for k in range(3) for d in range(6))])
+      out.writerow(["0", ", ".join(tile.categories), tile.name, *tile.phys,
+                    *(", ".join(t) for t in tile.targets)])
 
 
 # ------------------------------------------------------------------------------------------ problem

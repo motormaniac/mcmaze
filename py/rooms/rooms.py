@@ -40,12 +40,13 @@ IR_DIR = HERE.parent / "compile" / "ir"
 LOOKUPS_IR = IR_DIR / "lookups.irt"
 PLACE_IR = IR_DIR / "place.irt"
 
-# sheet columns (0 based, so column B is 1). Data starts on the row after the HEADER cell.
-WEIGHT_COL = 1
-CATEGORIES_COL = 2
-NAME_COL = 3
-SIDES_COL = 4 # the 6 own encodings, in SIDES order
-TARGETS_COL = 10 # the 6 target lists, in SIDES order
+# sheet columns (0 based, so column A is 0). Data starts on the row after the HEADER cell.
+# Headers: Room Weight, Categories, Structure Name, North..Down, Target North..Target Down
+WEIGHT_COL = 0
+CATEGORIES_COL = 1
+NAME_COL = 2
+SIDES_COL = 3 # the 6 own encodings, in SIDES order
+TARGETS_COL = 9 # the 6 target lists, in SIDES order
 HEADER = "Structure Name" # the NAME_COL cell of the header row
 SHEET_HEADER_ROW = 2 # row number of the header in the sheet, so errors can name sheet rows
 

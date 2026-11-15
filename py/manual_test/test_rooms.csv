@@ -1,0 +1,28 @@
+Room Weight,Categories,Structure Name,North,East,South,West,Up,Down,Target North,Target East,Target South,Target West,Target Up,Target Down
+0,t_basic,test:basic_closed_bottom,wall,wall,wall,wall,open,wall,wall,wall,wall,wall,open,wall
+0,t_basic,test:basic_deadend_bottom,open,wall,wall,wall,open,wall,open,wall,wall,wall,open,wall
+0,t_basic,test:basic_corner_bottom,open,open,wall,wall,open,wall,open,open,wall,wall,open,wall
+0,"t_basic, t_nofit",test:basic_straight_bottom,open,wall,open,wall,open,wall,open,wall,open,wall,open,wall
+0,"t_basic, t_nofit",test:basic_tee_bottom,open,open,open,wall,open,wall,open,open,open,wall,open,wall
+0,"t_basic, t_nofit",test:basic_cross_bottom,open,open,open,open,open,wall,open,open,open,open,open,wall
+0,t_basic,test:basic_closed_top,wall,wall,wall,wall,wall,open,wall,wall,wall,wall,wall,open
+0,t_basic,test:basic_deadend_top,open,wall,wall,wall,wall,open,open,wall,wall,wall,wall,open
+0,t_basic,test:basic_corner_top,open,open,wall,wall,wall,open,open,open,wall,wall,wall,open
+0,"t_basic, t_nofit",test:basic_straight_top,open,wall,open,wall,wall,open,open,wall,open,wall,wall,open
+0,"t_basic, t_nofit",test:basic_tee_top,open,open,open,wall,wall,open,open,open,open,wall,wall,open
+0,"t_basic, t_nofit",test:basic_cross_top,open,open,open,open,wall,open,open,open,open,open,wall,open
+0,t_slots,test:slots_closed_bottom,wall,wall,wall,wall,hatch,wall,"open, wall, join","open, wall, join","open, wall, join","open, wall, join","join, hatch, open","open, wall, join"
+0,t_slots,test:slots_deadend_bottom,door,wall,wall,wall,hatch,wall,"join, open, door","open, wall, join","open, wall, join","open, wall, join","join, hatch, open","open, wall, join"
+0,t_slots,test:slots_corner_bottom,door,door,wall,wall,hatch,wall,"join, open, door","join, open, door","open, wall, join","open, wall, join","join, hatch, open","open, wall, join"
+0,t_slots,test:slots_straight_bottom,door,wall,door,wall,hatch,wall,"join, open, door","open, wall, join","join, open, door","open, wall, join","join, hatch, open","open, wall, join"
+0,t_slots,test:slots_tee_bottom,door,door,door,wall,hatch,wall,"join, open, door","join, open, door","join, open, door","open, wall, join","join, hatch, open","open, wall, join"
+0,t_slots,test:slots_cross_bottom,door,door,door,door,hatch,wall,"join, open, door","join, open, door","join, open, door","join, open, door","join, hatch, open","open, wall, join"
+0,t_slots,test:slots_closed_top,wall,wall,wall,wall,wall,hatch,"open, wall, join","open, wall, join","open, wall, join","open, wall, join","open, wall, join","join, hatch, open"
+0,t_slots,test:slots_deadend_top,door,wall,wall,wall,wall,hatch,"join, open, door","open, wall, join","open, wall, join","open, wall, join","open, wall, join","join, hatch, open"
+0,t_slots,test:slots_corner_top,door,door,wall,wall,wall,hatch,"join, open, door","join, open, door","open, wall, join","open, wall, join","open, wall, join","join, hatch, open"
+0,t_slots,test:slots_straight_top,door,wall,door,wall,wall,hatch,"join, open, door","open, wall, join","join, open, door","open, wall, join","open, wall, join","join, hatch, open"
+0,t_slots,test:slots_tee_top,door,door,door,wall,wall,hatch,"join, open, door","join, open, door","join, open, door","open, wall, join","open, wall, join","join, hatch, open"
+0,t_slots,test:slots_cross_top,door,door,door,door,wall,hatch,"join, open, door","join, open, door","join, open, door","join, open, door","open, wall, join","join, hatch, open"
+0,t_domino,test:domino_half,join,wall,wall,wall,wall,wall,join,wall,wall,wall,wall,wall
+0,t_domino,test:domino_half_up,wall,wall,wall,wall,join,wall,wall,wall,wall,wall,join,wall
+0,t_domino,test:domino_half_down,wall,wall,wall,wall,wall,join,wall,wall,wall,wall,wall,join

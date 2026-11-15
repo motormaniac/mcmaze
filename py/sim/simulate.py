@@ -1,9 +1,9 @@
 """Simulates the maze2 algorithm (commands/maze2.txt) so tests can be checked before running in game.
 
   cd py
-  uv run sim/simulate.py check tiles.csv
-      expand rotations, check reciprocity, flag likely typos
-  uv run sim/simulate.py run tiles.csv --size 4 1 4 [--constraint 1,0,2 ...]
+  uv run sim/simulate.py check rooms.csv [--category NAME]
+      expand rotations, check reciprocity, flag likely typos, list encoding ids and wool colors
+  uv run sim/simulate.py run rooms.csv --category NAME --size 4 1 4 [--constraint 1,0,2 ...]
       exact verdict (solvable or not), then many simulated runs: how long they take, how high edit
       counts climb, and the false-error rate for each LIMIT
   uv run sim/simulate.py fuzz --instances 300
@@ -22,8 +22,8 @@ from pathlib import Path
 
 from algo import Algorithm, Event, Run
 from solver import Verdict, check_filling, solve
-from tiles import DIRS, OPP, WALL, Pos, Problem, Tile, TileError, add, lint, read_csv, \
-  reciprocity_errors, rotations, write_csv
+from tiles import DIRS, OPP, WALL, WOOL, Pos, Problem, Tile, TileError, add, encoding_ids, lint, \
+  read_csv, reciprocity_errors, rotations, write_csv
 
 LIMITS = (1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512)
 
@@ -73,8 +73,9 @@ def show_event(e: Event) -> str:
 
 # ------------------------------------------------------------------------------------------- checks
 
-def load(path: Path, wall: str, allow_nonreciprocal: bool) -> list[Tile]:
-  tiles = read_csv(path)
+def load(path: Path, wall: str, allow_nonreciprocal: bool,
+         categories: list[str] | None = None) -> list[Tile]:
+  tiles = read_csv(path, categories)
   errors = reciprocity_errors(tiles, wall)
   for note in lint(tiles, wall):
     print(f"note: {note}")
@@ -90,12 +91,17 @@ def load(path: Path, wall: str, allow_nonreciprocal: bool) -> list[Tile]:
 
 
 def cmd_check(args: argparse.Namespace) -> int:
-  tiles = load(args.csv, args.wall, True)
+  tiles = load(args.csv, args.wall, True, args.category)
   print(f"{len(tiles) // 4} cell types, {len(tiles)} lookups")
   for t in tiles:
-    faces = "  ".join(f"{DIRS[d][0].upper()}:{t.phys[d]}>{'|'.join(sorted(t.targets[d]))}"
-                      for d in range(6))
+    faces = "  ".join(f"{DIRS[d][0].upper()}:{t.phys[d]}>{'|'.join(t.targets[d])}" for d in range(6))
     print(f"  {t.label:<24} {faces}")
+  ids = encoding_ids(args.csv)
+  print("encoding ids (whole sheet) and visualize wool:")
+  for e, i in ids.items():
+    print(f"  {i:>2} {e:<12} {WOOL[i] if i < len(WOOL) else 'NO COLOR (visualize only has 16)'}")
+  if args.wall not in ids:
+    print(f"warning: {args.wall!r} isn't an encoding in the sheet, so constraints can't target it")
   return 0
 
 
@@ -171,7 +177,7 @@ def describe(problem: Problem, verdict: Verdict, runs: list[Run], limit_max: int
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-  tiles = load(args.csv, args.wall, args.allow_nonreciprocal)
+  tiles = load(args.csv, args.wall, args.allow_nonreciprocal, args.category)
   problem = Problem(tiles, tuple(args.size), frozenset(args.constraint), args.wall)
   print(f"{len(tiles) // 4} cell types ({len(tiles)} lookups), grid {problem.size}, "
         f"{len(problem.constraints)} interior constraints, {len(problem.free_cells())} cells")
@@ -226,7 +232,7 @@ def random_problem(rng: random.Random) -> tuple[list[Tile], Problem]:
   shell = Problem([], size, blockers)
 
   def tile(name: str, phys: tuple[str, ...]) -> Tile:
-    return Tile(name, 0, phys, tuple(frozenset(related[e]) for e in phys))
+    return Tile(name, 0, phys, tuple(tuple(sorted(related[e])) for e in phys))
 
   mode = rng.random()
   if mode < 0.3:
@@ -318,12 +324,16 @@ def main(argv: list[str]) -> int:
   check = sub.add_parser("check", help="expand rotations and validate a cell-type CSV")
   check.add_argument("csv", type=Path)
   check.add_argument("--wall", default=WALL)
+  check.add_argument("--category", action="append", metavar="NAME",
+                     help="only rooms in this category (repeatable); default all rooms")
 
   run = sub.add_parser("run", help="exact verdict plus simulated runs")
   run.add_argument("csv", type=Path)
   run.add_argument("--size", type=int, nargs=3, required=True, metavar=("X", "Y", "Z"))
   run.add_argument("--constraint", type=parse_pos, action="append", default=[], metavar="x,y,z")
   run.add_argument("--wall", default=WALL)
+  run.add_argument("--category", action="append", metavar="NAME",
+                   help="only rooms in this category (repeatable); default all rooms")
   run.add_argument("--trials", type=int, default=200)
   run.add_argument("--seed", type=int, default=0)
   run.add_argument("--limit-max", type=int, default=64,
