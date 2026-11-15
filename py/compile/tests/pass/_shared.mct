@@ -1,0 +1,19 @@
+-- imported by imports.mct, both directly and through _diamond.mct
+#-- dropped: top-level compiler comments in imported files don't reach the IR
+-- $KIND is defined by the file that imports this one
+$MOB = @e[type=$KIND];
+
+table $dirs (
+  n: north,
+  s: south,
+)
+
+func $greet ($who) (
+  #-- greeting $who
+  say hi $who;
+)
+
+-- skipped when imported, so it doesn't clash with the importer's $main
+func $main () (
+  say only when compiled on its own;
+)

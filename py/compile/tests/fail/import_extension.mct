@@ -1,0 +1,5 @@
+import _dup.mct;
+
+func $main () (
+  say hi;
+)

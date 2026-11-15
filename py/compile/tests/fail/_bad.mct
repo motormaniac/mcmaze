@@ -1,0 +1,4 @@
+-- imported by import_error_in_imported.mct
+func $bad () (
+  say $nope;
+)

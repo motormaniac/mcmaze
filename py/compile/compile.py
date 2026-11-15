@@ -14,7 +14,9 @@ The compiler runs in four stages:
 import re
 from bisect import bisect_right
 from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
+from pathlib import Path
 
 MODIFIERS = ("conditional", "needs_redstone") # also the order they're written in the IR
 
@@ -26,6 +28,7 @@ TABLE_START = re.compile(r"table\s+\$")
 RANGE_BOUND = re.compile(rf"-?\d+|\${NAME}(?:\[[^\]\n]*\])?")
 TABLE_KEY = re.compile(rf"{NAME}|-\d+")
 INTEGER = re.compile(r"-?\d+")
+IMPORT_NAME = re.compile(r"[A-Za-z0-9_-]+")
 CLOSERS = {"[": "]", "{": "}", "(": ")"}
 
 
@@ -209,12 +212,15 @@ class Func:
   params: list[str]
   param_offsets: list[int]
   body: list[Statement]
+  src: Source
+  """the file it was declared in, since imported files are merged into one program"""
 
 @dataclass
 class Global:
   name: str
   offset: int
   value: Value
+  src: Source
 
 @dataclass
 class Table:
@@ -222,8 +228,16 @@ class Table:
   offset: int
   entries: dict[str, Value]
   """key -> raw value"""
+  src: Source
 
-type TopLevel = Func | Global | Table | CompilerComment
+@dataclass
+class Import:
+  name: str
+  """the file name without .mct"""
+  offset: int
+
+type TopLevel = Func | Global | Table | CompilerComment | Import
+type Declaration = Func | Global | Table
 
 
 class Parser:
@@ -355,6 +369,8 @@ class Parser:
         return items
       if self.text.startswith("#--", self.pos):
         items.append(self.compiler_comment())
+      elif self.at_word("import"):
+        items.append(self.import_file())
       elif self.at_word("func"):
         items.append(self.function())
       elif self.at_word("table"):
@@ -373,13 +389,25 @@ class Parser:
     self.pos = end
     return CompilerComment(self.text[start:end], start)
 
+  def import_file(self) -> Import:
+    self.pos += len("import")
+    self.skip_whitespace()
+    match = IMPORT_NAME.match(self.text, self.pos)
+    if match is None:
+      raise self.error("expected a file name like import name;", self.pos)
+    self.pos = match.end()
+    if self.text.startswith(".mct", self.pos):
+      raise self.error(f"leave off the .mct, like import {match[0]};", match.start())
+    self.expect(";", "expected ; after the import")
+    return Import(match[0], match.start())
+
   def global_variable(self) -> Global:
     offset = self.pos
     name, _ = self.read_name("expected a global like $NAME")
     self.pos = self.text.index("=", self.pos) + 1
     start, end = self.scan(";", f"global ${name} never ended, expected ;", offset, track_parens=False, check_lines=True)
     self.pos = end + 1
-    return Global(name, offset, Value(self.text[start:end], start))
+    return Global(name, offset, Value(self.text[start:end], start), self.src)
 
   def table(self) -> Table:
     self.pos += len("table")
@@ -401,7 +429,7 @@ class Parser:
       entries[key] = Value(text[colon + 1:], entry.offset + colon + 1)
     if not entries:
       raise self.error(f"table ${name} is empty", offset)
-    return Table(name, offset, entries)
+    return Table(name, offset, entries, self.src)
 
   def function(self) -> Func:
     self.pos += len("func")
@@ -429,7 +457,7 @@ class Parser:
       else:
         raise self.error("expected , or ) in the parameter list", self.pos)
     open_offset = self.expect("(", "expected ( to start the function body")
-    return Func(name, offset, params, param_offsets, self.body(open_offset))
+    return Func(name, offset, params, param_offsets, self.body(open_offset), self.src)
 
   def body(self, open_offset: int) -> list[Statement]:
     statements: list[Statement] = []
@@ -449,6 +477,8 @@ class Parser:
       return self.modified_command()
     if self.at_word("func"):
       raise self.error("functions must be declared outside a function body", self.pos)
+    if self.at_word("import"):
+      raise self.error("imports must be outside a function body", self.pos)
     if TABLE_START.match(self.text, self.pos):
       raise self.error("tables must be declared outside a function body", self.pos)
     if LOOP_START.match(self.text, self.pos):
@@ -600,7 +630,7 @@ EMPTY_SCOPE = Scope({}, {})
 
 class Compiler:
   def __init__(self, src: Source, items: list[TopLevel]) -> None:
-    self.src = src
+    self.src = src # the file whose offsets are being expanded; switches inside imported functions and values
     self.items = items
     self.funcs: dict[str, Func] = {}
     self.globals: dict[str, Global] = {}
@@ -620,15 +650,26 @@ class Compiler:
       lines = [f"  in {description.ljust(width)}{where}" for description, where in frames]
     return self.src.error(message, offset, lines)
 
+  @contextmanager
+  def in_source(self, src: Source) -> Iterator[None]:
+    """Reads offsets as positions in src while expanding something declared there."""
+    saved = self.src
+    self.src = src
+    try:
+      yield
+    finally:
+      self.src = saved
+
   def collect(self) -> Func:
-    defined: dict[str, int] = {}
+    defined: dict[str, Declaration] = {}
     for item in self.items:
-      if isinstance(item, CompilerComment):
+      if isinstance(item, (CompilerComment, Import)):
         continue
       if item.name in defined:
-        line = self.src.line_col(defined[item.name])[0]
-        raise self.error(f"${item.name} is already defined at line {line}", item.offset)
-      defined[item.name] = item.offset
+        other = defined[item.name]
+        with self.in_source(item.src):
+          raise self.error(f"${item.name} is already defined at {other.src.where(other.offset)}", item.offset)
+      defined[item.name] = item
       if isinstance(item, Func):
         self.funcs[item.name] = item
       elif isinstance(item, Table):
@@ -636,13 +677,14 @@ class Compiler:
       else:
         self.globals[item.name] = item
     for func in self.funcs.values():
-      for param, offset in zip(func.params, func.param_offsets):
-        if param in self.globals:
-          raise self.error(f"${param} shadows a global", offset)
-        if param in self.tables:
-          raise self.error(f"${param} shadows a table", offset)
-        if param in self.funcs:
-          raise self.error(f"${param} shadows a function", offset)
+      with self.in_source(func.src):
+        for param, offset in zip(func.params, func.param_offsets):
+          if param in self.globals:
+            raise self.error(f"${param} shadows a global", offset)
+          if param in self.tables:
+            raise self.error(f"${param} shadows a table", offset)
+          if param in self.funcs:
+            raise self.error(f"${param} shadows a function", offset)
     main = self.funcs.get("main")
     if main is None:
       raise self.error("missing func $main ()", None)
@@ -707,7 +749,8 @@ class Compiler:
     description = f"${name}(" + ", ".join(f"${p} = {v}" for p, v in zip(func.params, values)) + ")"
     self.trace.append((description, f"called at {self.src.where(call.offset)}"))
     self.calls.append(name)
-    self.run_body(func.body, Scope(dict(zip(func.params, values)), {}))
+    with self.in_source(func.src):
+      self.run_body(func.body, Scope(dict(zip(func.params, values)), {}))
     self.calls.pop()
     self.trace.pop()
 
@@ -772,15 +815,17 @@ class Compiler:
     raise self.error(f"undefined variable ${name}", offset)
 
   def global_value(self, name: str, offset: int) -> str:
-    return self.resolve(f"${name}", "global", self.globals[name].value, offset)
+    found = self.globals[name]
+    return self.resolve(f"${name}", "global", found.value, found.src, offset)
 
   def table_value(self, name: str, key: str, offset: int) -> str:
-    value = self.tables[name].entries.get(key)
+    table = self.tables[name]
+    value = table.entries.get(key)
     if value is None:
       raise self.error(f"table ${name} has no key '{key}'", offset)
-    return self.resolve(f"${name}[{key}]", "table entry", value, offset)
+    return self.resolve(f"${name}[{key}]", "table entry", value, table.src, offset)
 
-  def resolve(self, label: str, kind: str, value: Value, offset: int) -> str:
+  def resolve(self, label: str, kind: str, value: Value, src: Source, offset: int) -> str:
     """Templates a global or table value once (only globals and tables are in scope) and caches it."""
     if label in self.resolved:
       return self.resolved[label]
@@ -788,7 +833,8 @@ class Compiler:
       cycle = " -> ".join(self.resolving + [label])
       raise self.error(f"recursive {kind}: {cycle}", offset)
     self.resolving.append(label)
-    self.resolved[label] = collapse(self.substitute(value.text, value.offset, EMPTY_SCOPE))
+    with self.in_source(src):
+      self.resolved[label] = collapse(self.substitute(value.text, value.offset, EMPTY_SCOPE))
     self.resolving.pop()
     return self.resolved[label]
 
@@ -838,9 +884,43 @@ class Compiler:
     return "".join(out)
 
 
+def normalize(source: str) -> str:
+  return source.replace("\r\n", "\n").replace("\r", "\n")
+
+def parse_with_imports(src: Source, path: Path, chain: list[Path], loaded: set[Path]) -> list[TopLevel]:
+  """
+  Parses src and puts each imported file's items where its import was, as if pasted in.
+  An imported file only adds declarations: its top-level compiler comments and its $main are dropped.
+  chain is the files being imported right now (to catch cycles), and loaded is every file seen so far,
+  so a file imported twice is only merged once.
+  """
+  items: list[TopLevel] = []
+  for item in Parser(src, mask_comments(src)).parse_file():
+    if not isinstance(item, Import):
+      items.append(item)
+      continue
+    target = (path.parent / f"{item.name}.mct").resolve()
+    if target in chain:
+      cycle = " -> ".join(p.name for p in chain[chain.index(target):] + [target])
+      raise src.error(f"import cycle: {cycle}", item.offset)
+    if target in loaded:
+      continue
+    if not target.is_file():
+      raise src.error(f"can't find {item.name}.mct next to {src.filename}", item.offset)
+    loaded.add(target)
+    imported = Source(normalize(target.read_text(encoding="utf-8")), target.name)
+    for sub in parse_with_imports(imported, target, chain + [target], loaded):
+      if isinstance(sub, CompilerComment) or (isinstance(sub, Func) and sub.name == "main"):
+        continue
+      items.append(sub)
+  return items
+
 def compile_source(source: str, filename: str) -> str:
-  """Compiles the text of a .mct file into IR text. Raises CompileError."""
-  text = source.replace("\r\n", "\n").replace("\r", "\n")
-  src = Source(text, filename)
-  items = Parser(src, mask_comments(src)).parse_file()
+  """
+  Compiles the text of a .mct file into IR text. Raises CompileError.
+  filename is the file's path: imports are looked up in its folder, and errors show just its name.
+  """
+  path = Path(filename).resolve()
+  src = Source(normalize(source), path.name)
+  items = parse_with_imports(src, path, [path], {path})
   return Compiler(src, items).run()

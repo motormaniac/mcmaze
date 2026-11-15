@@ -1,0 +1,2 @@
+-- imported by import_duplicate.mct
+$MOB = @e[type=pig];

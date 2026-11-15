@@ -1,0 +1,1 @@
+import_self.mct:1:8: import cycle: import_self.mct -> import_self.mct

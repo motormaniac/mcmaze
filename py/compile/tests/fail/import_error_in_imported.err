@@ -1,0 +1,3 @@
+_bad.mct:3:7: undefined variable $nope
+  in $bad()   called at import_error_in_imported.mct:4
+  in $main    at import_error_in_imported.mct:3

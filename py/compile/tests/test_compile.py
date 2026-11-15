@@ -1,6 +1,7 @@
 """Runs every example in tests/pass and tests/fail through the compiler.
 
 pass/<name>.mct must compile to exactly pass/<name>.irt.
+Files starting with _ aren't tests, just helpers for the import tests to import.
 fail/<name>.mct must raise CompileError, and fail/<name>.err holds the expected error:
   - the first line must match exactly
   - any other lines are the expected expansion trace (spacing is ignored)
@@ -15,8 +16,9 @@ import pytest
 from compile import CompileError, compile_source
 
 TESTS = Path(__file__).parent
-PASS = sorted((TESTS / "pass").glob("*.mct"))
-FAIL = sorted((TESTS / "fail").glob("*.mct"))
+# files starting with _ are only there to be imported by other tests
+PASS = sorted(p for p in (TESTS / "pass").glob("*.mct") if not p.name.startswith("_"))
+FAIL = sorted(p for p in (TESTS / "fail").glob("*.mct") if not p.name.startswith("_"))
 
 
 def squash(line: str) -> str:
@@ -26,14 +28,14 @@ def squash(line: str) -> str:
 @pytest.mark.parametrize("source", PASS, ids=lambda p: p.stem)
 def test_pass(source: Path) -> None:
   expected = source.with_suffix(".irt").read_text()
-  assert compile_source(source.read_text(), source.name) == expected
+  assert compile_source(source.read_text(), str(source)) == expected
 
 
 @pytest.mark.parametrize("source", FAIL, ids=lambda p: p.stem)
 def test_fail(source: Path) -> None:
   expected = source.with_suffix(".err").read_text().splitlines()
   with pytest.raises(CompileError) as info:
-    compile_source(source.read_text(), source.name)
+    compile_source(source.read_text(), str(source))
   actual = str(info.value).splitlines()
 
   assert actual[0] == expected[0]

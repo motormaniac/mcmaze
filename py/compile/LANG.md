@@ -56,7 +56,7 @@ Semicolons and commas inside quotes, `[ ]` or `{ }` don't count, so NBT and stri
 
 ## Statements
 
-Outside a function body, a file can only contain functions, globals, tables, comments and compiler comments. Inside a body, each statement is recognized by how it starts:
+Outside a function body, a file can only contain imports, functions, globals, tables, comments and compiler comments. Inside a body, each statement is recognized by how it starts:
 
 | Starts with | Statement |
 |---|---|
@@ -150,6 +150,33 @@ Rules:
             $show_i($i);    -- ok
           )
         )
+
+## Imports
+
+`import name;` pulls in the functions, globals and tables of `name.mct`, which must be in the same folder as the file importing it. It works as if that file's declarations were pasted in where the import is, so everything shares one set of names: the importer can use the imported file's names, and the imported file's values can use the importer's.
+
+    -- const.mct
+    $LOOKUP = type=item_display,name=lookup;
+
+    -- maze2.mct
+    import const;
+    func $main () (
+      kill @e[$LOOKUP];
+    )
+    -- produces:
+    kill @e[type=item_display,name=lookup]
+
+Rules:
+- Imports go outside function bodies, anywhere among the other declarations. Using one inside a body is an error.
+- Write the name without `.mct` and without quotes. Names are letters, digits, `_` and `-`, so there are no paths or subfolders.
+- An imported file's `func $main` is skipped, so a file can be compiled on its own and also imported. A skipped `$main` doesn't take the name.
+- Top-level compiler comments in an imported file are dropped. Compiler comments inside its function bodies still show up wherever those functions are called.
+- Imports are transitive: if `a` imports `b` and `b` imports `c`, `a` can use `c`'s names. A file imported more than once is only merged once.
+- An import cycle (`a` imports `b`, `b` imports `a`, or a file importing itself) is an error.
+- A name defined in two files is an error, the same as a name defined twice in one file.
+- Errors inside an imported file show that file's name, line and column.
+
+        maze2.mct:57:1: $LOOKUP is already defined at const.mct:2
 
 ## Loops
 
@@ -290,7 +317,7 @@ The compiler stops at the first error. Errors show the file, line and column, an
       in $main             at walls.mct:10
 
 ## Tests
-`compile/tests/pass/` holds pairs like `loops.mct` and `loops.irt` (the expected IR). `compile/tests/fail/` holds pairs like `recursion_direct.mct` and `recursion_direct.err` (the expected first line of the error, plus an optional trace). Run them with `uv run pytest` from `py/`.
+`compile/tests/pass/` holds pairs like `loops.mct` and `loops.irt` (the expected IR). `compile/tests/fail/` holds pairs like `recursion_direct.mct` and `recursion_direct.err` (the expected first line of the error, plus an optional trace). Files starting with `_` aren't tests, just files for the import tests to import. Run them with `uv run pytest` from `py/`.
 
 # IR (Intermediate Representation)
 

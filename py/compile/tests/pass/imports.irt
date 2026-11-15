@@ -1,0 +1,5 @@
+#-- top
+#-- greeting bob
+say hi bob
+kill @e[type=pig]
+say south

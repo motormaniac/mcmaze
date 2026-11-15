@@ -1,0 +1,11 @@
+import _shared;
+import _diamond;
+
+$KIND = pig;
+
+#-- top
+func $main () (
+  $greet(bob);
+  $kill_all();
+  say $dirs[s];
+)

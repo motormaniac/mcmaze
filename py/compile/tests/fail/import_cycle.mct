@@ -1,0 +1,5 @@
+import _cycle;
+
+func $main () (
+  say hi;
+)

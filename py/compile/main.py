@@ -32,7 +32,7 @@ def write_ir(ir: str, out_path: Path) -> None:
 def build(path: Path, args: argparse.Namespace) -> None:
   """Runs one input file through the chain. Raises CompileError or SchemError."""
   if path.suffix == ".mct":
-    ir = compile_source(path.read_text(encoding="utf-8"), path.name)
+    ir = compile_source(path.read_text(encoding="utf-8"), str(path))
     if args.ir:
       write_ir(ir, args.o or IR_DIR / f"{path.stem}.irt")
     if not args.schem:

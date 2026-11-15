@@ -1,0 +1,5 @@
+import nope;
+
+func $main () (
+  say hi;
+)

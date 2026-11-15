@@ -1,0 +1,6 @@
+-- imports _shared.mct again, which imports.mct also imports directly
+import _shared;
+
+func $kill_all () (
+  kill $MOB;
+)

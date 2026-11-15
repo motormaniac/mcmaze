@@ -1,0 +1,6 @@
+import _dup;
+$MOB = @e;
+
+func $main () (
+  kill $MOB;
+)
