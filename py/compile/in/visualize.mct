@@ -28,13 +28,12 @@ table $block (
   15: minecraft:black_wool
 )
 
-$GRAPH = type=item_display,name=graph;
+import const;
 
 func $visualize () (
-  execute as @e[$GRAPH,tag=!constraint] at @s run setblock ~ ~ ~ amethyst_block;
   for $dir in (north, east, south, west, up, down) (
     for $k in 0..15 (
-      execute as @e[$GRAPH,tag=!constraint] at @s if score @s $dir matches $k run setblock $offset[$dir] $block[$k];
+      execute as @e[$GRAPH,tag=visualize] at @s if score @s $dir matches $k run setblock $offset[$dir] $block[$k];
     )
   )
 )

@@ -1,13 +1,13 @@
-$TARGET_AMOUNT = 6;
+import const;
 
 func $main () (
   for $dir in (north, east, south, west, up, down) (
-    scoreboard objectives add $dir
+    scoreboard objectives add $dir dummy;
     for $k in 1..$TARGET_AMOUNT (
-      scoreboard objectives add target_$dir$k
+      scoreboard objectives add target_$dir$k dummy;
     )
   )
-  for $x in (i, ref, enabled, filter, rng, rngWeight) (
-    scoreboard objectives add $x
+  for $x in (var, edit, i, ref, enabled, filter, rng, rngWeight) (
+    scoreboard objectives add $x dummy;
   )
 )

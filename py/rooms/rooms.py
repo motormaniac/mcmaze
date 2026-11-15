@@ -57,7 +57,7 @@ GRAPH_NAME = "graph"
 LOOKUP = f"type={ENTITY_TYPE},name={LOOKUP_NAME}"
 GRAPH = f"type={ENTITY_TYPE},name={GRAPH_NAME}"
 LOOKUP_NBT = f"CustomName:{LOOKUP_NAME},view_range:0f,width:0f,height:0f"
-LOOKUP_POS = "0 0 0" # absolute coordinates. Must have the same Y and Z as randChoose.
+LOOKUP_POS = "-58.0 3.0 3.0" # absolute coordinates. Must have the same Y and Z as randChoose.
 NEW_TAG = "new"
 CONSTRAINT_TAG = "constraint"
 CATEGORY_PREFIX = "cat_"

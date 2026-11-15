@@ -1,0 +1,11 @@
+-- shared constants, pulled in with import const;
+
+-- selector arguments shared by every command
+$GRAPH = type=item_display,name=graph;
+$LOOKUP = type=item_display,name=lookup;
+-- NBT that makes an item_display invisible and tiny
+$ITEM_DISPLAY_NBT = view_range:0f,width:0f,height:0f;
+-- how many target walls are allowed per side
+$TARGET_AMOUNT = 6;
+$LOOKUP_POS = -58.0 3 3.0;
+$RAND_CHOOSE_POS = -56.0 3 3.0;

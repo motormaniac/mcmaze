@@ -1,0 +1,66 @@
+import const;
+
+$CONSTRAINT = type=bat,name=constraint;
+$CONSTRAINT_ENCODING_TYPE = 0;
+
+
+--[
+give @p minecraft:bat_spawn_egg[item_name=constraint,entity_data={id:"minecraft:bat",CustomName:constraint}]
+]--
+
+func $spawn_constraint () (
+  execute as @e[$CONSTRAINT] at @s run summon item_display ~ ~ ~ {CustomName:graph,$ITEM_DISPLAY_NBT,Tags:[new,constraint]};
+  kill @e[$CONSTRAINT];
+  for $dir in (north, east, south, west, up, down) (
+    scoreboard players set @e[$GRAPH,tag=constraint,tag=new] $dir $CONSTRAINT_ENCODING_TYPE;
+    scoreboard players set @e[$GRAPH,tag=constraint,tag=new] target_${dir}1 $CONSTRAINT_ENCODING_TYPE;
+    for $k in 2..$TARGET_AMOUNT (
+      scoreboard players set @e[$GRAPH,tag=constraint,tag=new] target_${dir}$k -1;
+    )
+  )
+  tag @e[$GRAPH,tag=constraint,tag=new] remove new;
+)
+
+-- give @p minecraft:bat_spawn_egg[item_name=removeConstraint,entity_data={id:"minecraft:bat",CustomName:removeConstraint}]
+func $remove_constraint () (
+  execute as @e[type=bat,name=removeConstraint] at @s run kill @n[$GRAPH,tag=constraint];
+  kill @e[type=bat,name=removeConstraint];
+)
+
+func $remove_all_constraints() (
+  execute as @e[$GRAPH,tag=constraint] at @s run setblock ~ ~ ~ air;
+  kill @e[$GRAPH,tag=constraint];
+)
+
+-- Test cases from py/manual_test/TESTS.md: each one enables only its test's category
+func $enable_category ($category) (
+  scoreboard players set @e[$LOOKUP] enabled 0;
+  scoreboard players set @e[$LOOKUP,tag=cat_$category] enabled 1;
+)
+
+func $enable_test_cases() (
+  #-- Test 1: basic
+  $enable_category(t_basic);
+  #-- Test 2: three targets
+  $enable_category(t_slots);
+  #-- Test 3: nothing fits
+  $enable_category(t_nofit);
+  #-- Test 4: dominoes
+  $enable_category(t_domino);
+  #-- Test 5: dominoes that can't pair up
+  $enable_category(t_domino);
+  #-- Test 6: triominoes, 10 cells
+  $enable_category(t_tri);
+  #-- Test 7: triominoes, 9 cells
+  $enable_category(t_tri);
+  #-- Test 8: triominoes stress, 12 cells
+  $enable_category(t_tri);
+)
+
+func $main() (
+  #-- Spawn constraint
+  -- $spawn_constraint();
+  -- #-- Remove constraint
+  -- $remove_constraint();
+  $enable_test_cases();
+)

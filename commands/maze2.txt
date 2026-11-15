@@ -1,7 +1,6 @@
 THIS CODE IS OUTDATED
 Updated code is in py/complie/in/maze2.mct
 
-
 # SCOREBOARDS
 ## dummy scoreboards
 var = used for global variables
@@ -69,19 +68,30 @@ push(elem): set new element's i to queueSize; queueSize += 1
 pop: Get element whos i == 0; set element's i to -1; all elems i -= 1; queueSize -= 1
 
 
+## Spawn start point
+-- give @p minecraft:bat_spawn_egg[item_name=start,entity_data={id:"minecraft:bat",CustomName:start}]
+
+execute as @e[type=bat,name=start] at @s run summon item_display ~ ~ ~ {CustomName:graph,view_range:0f,width:0f,height:0f,Tags:[start]}
+-- conditional
+kill @e[type=bat,name=start]
+
+
+## Debug Show graph nodes
+execute as @e[type=item_display,name=graph] run data merge entity @s {view_range:1,width:1,height:1}
+execute as @e[type=item_display,name=graph,tag=!constraint] run data merge entity @s {item:{id:diamond}}
+execute as @e[type=item_display,name=graph,tag=constraint] run data merge entity @s {item:{id:netherite_ingot}}
+execute as @e[type=item_display,name=graph] at @s align xyz run tp @s ~0.5 ~0.5 ~0.5
+
 -- # Init
 -- reset queue
+kill @e[type=item_display,name=graph,tag=!constraint,tag=!start]
 scoreboard players set .queueSize var 0
 scoreboard players set @e[type=item_display,name=graph] i -1
-tag @e[type=item_display,name=graph,tag=select] remove select
-
 -- push starting node to queue
-summon item_display ~ ~ ~ {CustomName:graph,view_range:0f,width:0f,height:0f,Tags:[new]}
-scoreboard players operation @e[type=item_display,name=graph,tag=new] i = .queueSize var
+scoreboard players operation @e[type=item_display,name=graph,tag=start] i = .queueSize var
 scoreboard players add .queueSize var 1
--- set initial position (use 0 based indexing)
-scoreboard players set @e[type=item_display,name=graph,tag=new] edit 0
-tag @e[type=item_display,name=graph,tag=new] remove new
+scoreboard players set @e[type=item_display,name=graph,tag=start] edit 0
+tag @e[type=item_display,name=graph,tag=start] remove start
 
 **Emergency stop: kill all graph nodes**
 kill @e[type=item_display,name=graph]

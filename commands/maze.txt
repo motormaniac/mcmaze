@@ -34,6 +34,7 @@ global scoreboard name: .global
 - flagCapture = time scoreboard. A player must sit on a flag's location for some time.
 - settings = example: scoreboard players set .hiderNameOn settings 1 (true)
 - fireworkCount = counts how many fireworks the player has in their inventory
+- fireworkOffhandCount = counts how many fireworks are in the player's offhand
 Triggers:
 - book = debug: gives the target player a command book
 - end = when all players trigger end, the game forces a draw and exits early.

@@ -52,16 +52,8 @@ func $main () (
   $bfs_iterate();
 )
 
--- selector arguments shared by every command
-$GRAPH = type=item_display,name=graph;
-$LOOKUP = type=item_display,name=lookup;
--- NBT that makes an item_display invisible and tiny
-$ITEM_DISPLAY_NBT = view_range:0f,width:0f,height:0f;
--- how many target walls are allowed per side
-$TARGET_AMOUNT = 6;
-
-$LOOKUP_POS = 
-$RAND_CHOOSE_POS = 
+-- $GRAPH, $LOOKUP, $ITEM_DISPLAY_NBT, $TARGET_AMOUNT and the positions
+import const;
 
 -- cells are 7 blocks apart
 table $offset (
@@ -83,7 +75,7 @@ table $opposite (
   down: up,
 )
 
-
+-- NOT UPDATEDDDD!!!!!
 -- # Init
 func $init () (
   -- reset queue
@@ -128,6 +120,7 @@ func $bfs_iterate () (
   scoreboard players remove @e[$GRAPH,scores={i=1..}] i 1;
   scoreboard players remove .queueSize var 1;
 
+  scoreboard players set @e[$LOOKUP] filter 0;
   scoreboard players set @e[$LOOKUP,scores={enabled=1}] filter 2;
 
   for $dir in (north, east, south, west, up, down) (
@@ -149,7 +142,7 @@ func $bfs_iterate () (
   )
 
 
-  -- If all filters are 0 (there were no strong or weak filters)
+  #-- If all filters are 0 (there were no strong or weak filters)
   scoreboard players set .if var 0;
   execute unless entity @e[$LOOKUP,scores={filter=1..2}] run scoreboard players set .if var 1;
   -- if true: increment edit count of selected graph
@@ -178,12 +171,14 @@ func $bfs_iterate () (
   The randChoose entity is positioned such that the highest lookup is closest to it.
   Adding or subtracting up to 100 from the random value will move the lookup entity by at most one block.
   ]--
-  execute if entity @e[$GRAPH,tag=select] as @e[$LOOKUP,scores={filter=1..}] store result score @s rng run random value 0..100;
-  execute as @e[$LOOKUP,scores={filter=1..}] run scoreboard players operation @s rng += @s rngWeight;
-  scoreboard players operation @e[$LOOKUP,scores={filter=1..}] rng += .randXCoordConst var;
+  scoreboard players set .if var 0;
+  execute if entity @e[$GRAPH,tag=select] run scoreboard players set .if var 1;
+  execute if score .if var matches 1 as @e[$LOOKUP,scores={filter=1..}] store result score @s rng run random value 0..100;
+  execute if score .if var matches 1 as @e[$LOOKUP,scores={filter=1..}] run scoreboard players operation @s rng += @s rngWeight;
+  execute if score .if var matches 1 as @e[$LOOKUP,scores={filter=1..}] run scoreboard players operation @s rng += .randXCoordConst var;
   -- set the x coordinate of each lookup to its random value
-  execute as @e[type=item_display,name=lookup,scores={filter=1..}] store result entity @s Pos[0] float 0.01 run scoreboard players get @s rng;
-  execute as @e[type=item_display,name=randChoose] at @s run tag @n[$LOOKUP,scores={filter=1..}] add select;
+  execute if score .if var matches 1 as @e[type=item_display,name=lookup,scores={filter=1..}] store result entity @s Pos[0] float 0.01 run scoreboard players get @s rng;
+  execute if score .if var matches 1 as @e[type=item_display,name=randChoose] at @s run tag @n[$LOOKUP,scores={filter=1..}] add select;
 
   #-- Transfer the properties from selected lookup to the selected graph
   scoreboard players operation @e[$GRAPH,tag=select] ref = @e[$LOOKUP,tag=select] ref;
@@ -193,7 +188,16 @@ func $bfs_iterate () (
       scoreboard players operation @e[$GRAPH,tag=select] target_$dir$k = @e[$LOOKUP,tag=select] target_$dir$k;
     )
   )
+  tag @e[$GRAPH,tag=select] remove select;
+  tag @e[$LOOKUP,tag=select] remove select;
 )
+
+--[
+# Count Filter
+execute store result score .weakCount var run execute if entity @e[type=item_display,name=lookup,scores={filter=2}]
+execute store result score .strongCount var run execute if entity @e[type=item_display,name=lookup,scores={filter=1}]
+execute store result score .noneCount var run execute if entity @e[type=item_display,name=lookup,scores={filter=0}]
+]--
 
 -- Narrow the lookups down using the neighbor in direction $dir
 func $filter_side ($dir) (

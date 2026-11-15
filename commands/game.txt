@@ -14,6 +14,7 @@ Tell players to turn sounds on
 Explicitely tell players to remove
 
 ## Change Notes
+Explain how the chicken works when it spawns
 You can press the start button while the game is happening
 Blocks break when the game ends
 Spawn multiple tutorials

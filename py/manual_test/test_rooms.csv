@@ -26,3 +26,11 @@ Room Weight,Categories,Structure Name,North,East,South,West,Up,Down,Target North
 0,t_domino,test:domino_half,join,wall,wall,wall,wall,wall,join,wall,wall,wall,wall,wall
 0,t_domino,test:domino_half_up,wall,wall,wall,wall,join,wall,wall,wall,wall,wall,join,wall
 0,t_domino,test:domino_half_down,wall,wall,wall,wall,wall,join,wall,wall,wall,wall,wall,join
+0,t_tri,test:tri_end_side,end_side,wall,wall,wall,wall,wall,mid,wall,wall,wall,wall,wall
+0,t_tri,test:tri_end_up,wall,wall,wall,wall,end_up,wall,wall,wall,wall,wall,mid,wall
+0,t_tri,test:tri_end_down,wall,wall,wall,wall,wall,end_down,wall,wall,wall,wall,wall,mid
+0,t_tri,test:tri_mid_straight,mid,wall,mid,wall,wall,wall,"end_up, end_side, end_down",wall,"end_up, end_side, end_down",wall,wall,wall
+0,t_tri,test:tri_mid_corner,mid,mid,wall,wall,wall,wall,"end_up, end_side, end_down","end_up, end_side, end_down",wall,wall,wall,wall
+0,t_tri,test:tri_mid_side_up,mid,wall,wall,wall,mid,wall,"end_up, end_side, end_down",wall,wall,wall,"end_up, end_side, end_down",wall
+0,t_tri,test:tri_mid_side_down,mid,wall,wall,wall,wall,mid,"end_up, end_side, end_down",wall,wall,wall,wall,"end_up, end_side, end_down"
+0,t_tri,test:tri_mid_up_down,wall,wall,wall,wall,mid,mid,wall,wall,wall,wall,"end_up, end_side, end_down","end_up, end_side, end_down"

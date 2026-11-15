@@ -6,7 +6,7 @@
 Every test is one category, so the sheet is compiled once and each test is run by enabling only its
 category. See manual_test/TESTS.md for what each test checks and how to run it.
 
-Encodings: wall (constraint encoding, id 0), open, door, hatch, join.
+Encodings: wall (constraint encoding, id 0), open, door, hatch, join, and the t_tri end and mid encodings.
 """
 
 import sys
@@ -77,8 +77,36 @@ def domino() -> list[Tile]:
   return rooms
 
 
+def tri() -> list[Tile]:
+  """t_tri: triominoes, built from ends and middles. A middle piece has two `mid` faces, each of
+  which accepts any of 3 end encodings, and an end has one face that accepts only `mid`. Ends never
+  join ends, and middles never join middles, so every piece is end-middle-end: 3 cells.
+
+  Unlike the earlier tests, matching faces have different encodings (end_side meets mid), and the
+  mid list has 3 real targets. Each end encoding only exists on one side of one room, so which slot
+  of the mid list matches depends on where the end is: up is slot 1, side slot 2, down slot 3."""
+  mid_targets = ["end_up", "end_side", "end_down"]
+  targets = {"mid": mid_targets, **{e: ["mid"] for e in mid_targets}}
+
+  def piece(name: str, faces: dict[int, str]) -> Tile:
+    phys = [faces.get(side, WALL) for side in range(6)]
+    return room(f"test:tri_{name}", phys, [targets.get(e, [WALL]) for e in phys], ["t_tri"])
+
+  N, E, S, U, D = 0, 1, 2, 4, 5
+  return [
+    piece("end_side", {N: "end_side"}),
+    piece("end_up", {U: "end_up"}),
+    piece("end_down", {D: "end_down"}),
+    piece("mid_straight", {N: "mid", S: "mid"}),
+    piece("mid_corner", {N: "mid", E: "mid"}),
+    piece("mid_side_up", {N: "mid", U: "mid"}),
+    piece("mid_side_down", {N: "mid", D: "mid"}),
+    piece("mid_up_down", {U: "mid", D: "mid"}),
+  ]
+
+
 def all_rooms() -> list[Tile]:
-  return basic() + slots() + domino()
+  return basic() + slots() + domino() + tri()
 
 
 if __name__ == "__main__":
