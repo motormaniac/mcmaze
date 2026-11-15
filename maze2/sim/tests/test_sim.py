@@ -1,6 +1,7 @@
 """Tests for the maze2 simulator: tile handling, the exact solver, and the algorithm model."""
 
 import random
+import re
 from pathlib import Path
 
 import pytest
@@ -8,7 +9,7 @@ import pytest
 from algo import Algorithm, Node, Queue
 from simulate import main, random_problem, reachable
 from solver import check_filling, solve
-from tiles import (D, E, N, S, U, W, WALL, Problem, Tile, TileError, encoding_ids, lint, read_csv, sheet,
+from tiles import (D, E, N, S, U, W, WALL, Problem, Tile, TileError, encoding_ids, lint, matches, read_csv, sheet,
                    reciprocity_errors, rotate, rotations, write_csv)
 
 
@@ -82,6 +83,37 @@ def test_sheet_errors_are_reported(tmp_path: Path):
   write_csv([tile("solid", [WALL] * 6, [[WALL]] * 5 + [[]])], path)
   with pytest.raises(TileError, match="down target list is empty"):
     read_csv(path)
+
+STAIR_BOTTOM = walled("stair_bottom", up="stair_R")
+STAIR_TOP = walled("stair_top", down="stair_R")
+
+def test_rotating_encodings_turn_with_the_room(tmp_path: Path):
+  write_csv([STAIR_BOTTOM, STAIR_TOP], tmp_path / "t.csv")
+  tiles = read_csv(tmp_path / "t.csv")
+  bottoms, tops = tiles[:4], tiles[4:]
+  assert [t.phys[U] for t in bottoms] == ["stair_R0", "stair_R90", "stair_R180", "stair_R270"]
+  assert [t.targets[D] for t in tops] == [("stair_R0",), ("stair_R90",), ("stair_R180",), ("stair_R270",)]
+  for bottom in bottoms:
+    assert [top.rotation for top in tops if matches(bottom, U, top)] == [bottom.rotation]
+  assert reciprocity_errors(tiles) == []
+  assert solve(Problem(tiles, (1, 2, 1))).status == "solvable"
+
+def test_rotating_encodings_take_4_ids_in_rotation_order(tmp_path: Path):
+  write_csv([STAIR_BOTTOM, STAIR_TOP], tmp_path / "t.csv")
+  ids = encoding_ids(tmp_path / "t.csv")
+  assert [ids[f"stair_R{d}"] for d in (0, 90, 180, 270)] == [ids[WALL] + k for k in range(1, 5)]
+  assert "stair_R" not in ids
+
+@pytest.mark.parametrize("bad, message", [
+  (walled("t", north="door_R"), "north encoding 'door_R' is a _R encoding, which is only allowed on up and down"),
+  (tile("t", [WALL] * 6, [["x_R"]] + [[WALL]] * 5), "north target 'x_R' is a _R encoding"),
+  (walled("t", up="stair_R90"), "up encoding 'stair_R90' ends in a reserved rotation suffix (write stair_R instead)"),
+  (walled("t", up="constraint_R"), "up encoding 'constraint_R' can't rotate"),
+])
+def test_rotating_encoding_errors(tmp_path: Path, bad: Tile, message: str):
+  write_csv([bad, STAIR_BOTTOM], tmp_path / "t.csv")
+  with pytest.raises(TileError, match=re.escape(message)):
+    read_csv(tmp_path / "t.csv")
 
 def test_reciprocity():
   assert reciprocity_errors(problem([OPEN_4WAY, HALF, SOLID], (1, 1, 1)).tiles) == []

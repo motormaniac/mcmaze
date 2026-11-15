@@ -12,9 +12,15 @@ becomes its own lookup, with ref = 4 * row index + rotation index (in ROTATIONS 
 Rotating clockwise moves each side's encoding and target list from north to east, east to south, etc.
 Up and down never move.
 
+An encoding ending in ROTATING_SUFFIX (`stair_R`) turns with its room. It is only allowed on up and down,
+as a side's own encoding or as a target, and becomes one encoding per rotation: rotation k (in ROTATIONS
+order) uses `stair_R{90*k}`, so `stair_R0`, `stair_R90`, `stair_R180`, `stair_R270`. A room's own
+encodings and its targets turn together, so two rooms stacked on a `_R` encoding only match when they are
+rotated the same way. Those 4 names are reserved: the sheet can't use them directly.
+
 The CONSTRAINT_ENCODING encoding (the maze boundary) is always id 0, wherever it appears. Every other
 encoding is numbered from 1 in order of first appearance, reading the rows top to bottom and each row
-left to right. Target lists shorter than TARGET_AMOUNT are padded with EMPTY_TARGET.
+left to right, and a `_R` encoding takes 4 ids in a row, in ROTATIONS order. Target lists shorter than TARGET_AMOUNT are padded with EMPTY_TARGET.
 Nothing is written if any row has an error, and every error is printed.
 """
 
@@ -80,9 +86,14 @@ MIN_WEIGHT, MAX_WEIGHT = -100, 100
 ROOM_SIZE = 7
 ROTATIONS = ("none", "clockwise_90", "180", "counterclockwise_90")
 
+# `stair_R` becomes `stair_R0`, `stair_R90`, ... (see the module docstring). Only up and down can rotate.
+ROTATING_SUFFIX = "_R"
+ROTATING_SIDES = ("up", "down")
+
 ENCODING_RE = re.compile(r"[^\s(),]+")
 CATEGORY_RE = re.compile(r"[A-Za-z0-9_.+-]+")
 STRUCTURE_RE = re.compile(r"([a-z0-9_.-]+:)?[a-z0-9_./-]+")
+VARIANT_RE = re.compile(re.escape(ROTATING_SUFFIX) + "(" + "|".join(str(90 * k) for k in range(len(ROTATIONS))) + ")$")
 
 
 @dataclass
@@ -118,6 +129,30 @@ def parse_list(cell: str) -> list[str]:
   if not text.strip():
     return []
   return [item.strip() for item in text.split(",")]
+
+def rotates(encoding: str) -> bool:
+  return encoding.endswith(ROTATING_SUFFIX)
+
+def variant(encoding: str, turns: int) -> str:
+  """The encoding a room turned `turns` times clockwise uses: `stair_R` -> `stair_R90` for 1 turn.
+  Encodings without ROTATING_SUFFIX don't change."""
+  return f"{encoding}{90 * turns}" if rotates(encoding) else encoding
+
+def variants(encoding: str) -> list[str]:
+  """Every encoding `encoding` can become, in ROTATIONS order."""
+  return [variant(encoding, turns) for turns in range(len(ROTATIONS))] if rotates(encoding) else [encoding]
+
+def encoding_problem(side: str, encoding: str) -> str | None:
+  """Why `encoding` can't be used on `side` (as its own encoding or a target), or None if it can."""
+  if not ENCODING_RE.fullmatch(encoding):
+    return "must be one encoding with no spaces, commas or brackets"
+  if reserved := VARIANT_RE.search(encoding):
+    return f"ends in a reserved rotation suffix (write {encoding[:reserved.start()]}{ROTATING_SUFFIX} instead)"
+  if rotates(encoding) and encoding[:-len(ROTATING_SUFFIX)] == CONSTRAINT_ENCODING:
+    return f"can't rotate: the {CONSTRAINT_ENCODING} encoding is always id {CONSTRAINT_ID}"
+  if rotates(encoding) and side not in ROTATING_SIDES:
+    return f"is a {ROTATING_SUFFIX} encoding, which is only allowed on {' and '.join(ROTATING_SIDES)}"
+  return None
 
 def parse_rooms(rows: list[list[str]]) -> tuple[list[Room], list[str]]:
   """Reads every room below the header row. Returns the rooms and every error found."""
@@ -164,8 +199,8 @@ def parse_rooms(rows: list[list[str]]) -> tuple[list[Room], list[str]]:
     for side, encoding in zip(SIDES, sides):
       if not encoding:
         error(f"missing {side} encoding")
-      elif not ENCODING_RE.fullmatch(encoding):
-        error(f"{side} encoding {encoding!r} must be one encoding with no spaces, commas or brackets")
+      elif problem := encoding_problem(side, encoding):
+        error(f"{side} encoding {encoding!r} {problem}")
 
     targets: list[list[str]] = []
     for side, cell in zip(SIDES, target_cells):
@@ -177,8 +212,8 @@ def parse_rooms(rows: list[list[str]]) -> tuple[list[Room], list[str]]:
       for item in items:
         if not item:
           error(f"{side} target list has an empty entry (extra comma?)")
-        elif not ENCODING_RE.fullmatch(item):
-          error(f"{side} target {item!r} must be one encoding with no spaces, commas or brackets")
+        elif problem := encoding_problem(side, item):
+          error(f"{side} target {item!r} {problem}")
       targets.append(items)
 
     rooms.append(Room(sheet_row, name, weight, categories, sides, targets))
@@ -198,18 +233,20 @@ def parse_rooms(rows: list[list[str]]) -> tuple[list[Room], list[str]]:
 
 def encoding_ids(rooms: list[Room]) -> dict[str, int]:
   """Gives the constraint encoding CONSTRAINT_ID, and numbers every other encoding from
-  CONSTRAINT_ID + 1 in order of first appearance, row by row, left to right."""
+  CONSTRAINT_ID + 1 in order of first appearance, row by row, left to right.
+  A `_R` encoding gets an id for each of its variants, in ROTATIONS order."""
   ids: dict[str, int] = {}
   next_id = CONSTRAINT_ID + 1
   for room in rooms:
-    for encoding in room.sides + [item for items in room.targets for item in items]:
-      if encoding in ids:
-        continue
-      if encoding == CONSTRAINT_ENCODING:
-        ids[encoding] = CONSTRAINT_ID
-      else:
-        ids[encoding] = next_id
-        next_id += 1
+    for base in room.sides + [item for items in room.targets for item in items]:
+      for encoding in variants(base):
+        if encoding in ids:
+          continue
+        if encoding == CONSTRAINT_ENCODING:
+          ids[encoding] = CONSTRAINT_ID
+        else:
+          ids[encoding] = next_id
+          next_id += 1
   return dict(sorted(ids.items(), key=lambda item: item[1]))
 
 def rotate[T](values: list[T], turns: int) -> list[T]:
@@ -218,8 +255,12 @@ def rotate[T](values: list[T], turns: int) -> list[T]:
   return [horizontal[(i - turns) % 4] for i in range(4)] + values[4:]
 
 def lookups(rooms: list[Room]) -> list[Lookup]:
+  """Every rotation of every room. Each one moves the horizontal sides, then swaps `_R` encodings
+  (only ever on up and down) for that rotation's variant."""
   return [
-    Lookup(room, turns, len(ROTATIONS) * i + turns, rotate(room.sides, turns), rotate(room.targets, turns))
+    Lookup(room, turns, len(ROTATIONS) * i + turns,
+           [variant(encoding, turns) for encoding in rotate(room.sides, turns)],
+           [[variant(item, turns) for item in items] for items in rotate(room.targets, turns)])
     for i, room in enumerate(rooms)
     for turns in range(len(ROTATIONS))
   ]

@@ -89,9 +89,10 @@ def read_csv(path: Path, categories: list[str] | None = None) -> list[Tile]:
     rooms = [r for r in rooms if set(r.categories) & set(categories)]
     if not rooms:
       raise TileError(f"{path}: no rooms in categories {categories}")
-  base = [Tile(r.name, 0, tuple(r.sides), tuple(tuple(t) for t in r.targets), tuple(r.categories))
-          for r in rooms]
-  return [rot for t in base for rot in rotations(t)]
+  # rotated by rooms.py, like the in-game lookups, so `_R` encodings turn exactly as they do in game
+  return [Tile(lookup.room.name, 90 * lookup.rotation, tuple(lookup.sides),
+               tuple(tuple(t) for t in lookup.targets), tuple(lookup.room.categories))
+          for lookup in sheet.lookups(rooms)]
 
 
 def encoding_ids(path: Path) -> dict[str, int]:
