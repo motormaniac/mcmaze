@@ -3,6 +3,10 @@
   uv run poe rooms           -- download the sheet to maze2/rooms/rooms.csv, then build from it
   uv run poe rooms some.csv  -- build from a CSV without downloading
 
+The downloaded sheet has extra columns and Google joins its two header rows into one ("This Cell's
+Encoding North"), so fetch() finds each column by its header and saves rooms.csv in CSV_HEADER's layout,
+the one every CSV this script reads must use (maze2/manual_test/test_rooms.csv uses it too).
+
 Writes two IR files (see tools/mct/LANG.md), which `uv run poe mct` turns into schematics:
   maze2/ir/lookups.irt  kills the old lookups, then summons one lookup per room rotation
   maze2/ir/place.irt    places the structure of every graph node, picked by its ref
@@ -20,7 +24,8 @@ rotated the same way. Those 4 names are reserved: the sheet can't use them direc
 
 The CONSTRAINT_ENCODING encoding (the maze boundary) is always id 0, wherever it appears. Every other
 encoding is numbered from 1 in order of first appearance, reading the rows top to bottom and each row
-left to right, and a `_R` encoding takes 4 ids in a row, in ROTATIONS order. Target lists shorter than TARGET_AMOUNT are padded with EMPTY_TARGET.
+left to right, and a `_R` encoding takes 4 ids in a row, in ROTATIONS order. Target lists shorter than
+TARGET_AMOUNT are padded with EMPTY_TARGET.
 Nothing is written if any row has an error, and every error is printed.
 """
 
@@ -46,15 +51,15 @@ IR_DIR = HERE.parent / "ir"
 LOOKUPS_IR = IR_DIR / "lookups.irt"
 PLACE_IR = IR_DIR / "place.irt"
 
-# sheet columns (0 based, so column A is 0). Data starts on the row after the HEADER cell.
-# Headers: Room Weight, Categories, Structure Name, North..Down, Target North..Target Down
+# columns of the CSV this script reads (0 based, so column A is 0). Data starts on the row after the
+# HEADER cell. fetch() converts the downloaded sheet to this layout.
 WEIGHT_COL = 0
 CATEGORIES_COL = 1
 NAME_COL = 2
 SIDES_COL = 3 # the 6 own encodings, in SIDES order
 TARGETS_COL = 9 # the 6 target lists, in SIDES order
 HEADER = "Structure Name" # the NAME_COL cell of the header row
-SHEET_HEADER_ROW = 2 # row number of the header in the sheet, so errors can name sheet rows
+SHEET_HEADER_ROW = 2 # the sheet's last header row, so errors can name sheet rows
 
 # entities (keep in sync with maze2.mct)
 ENTITY_TYPE = "item_display"
@@ -74,6 +79,10 @@ CONSTRAINT_ID = 0
 
 # scoreboards (keep in sync with maze2.mct)
 SIDES = ("north", "east", "south", "west", "up", "down")
+
+# the header row of the CSV layout above
+CSV_HEADER = ["Room Weight", "Categories", HEADER, *(side.title() for side in SIDES),
+              *(f"Target {side.title()}" for side in SIDES)]
 TARGET_SCORE = "target_{side}{k}"
 TARGET_AMOUNT = 6
 EMPTY_TARGET = -1
@@ -114,12 +123,44 @@ class Lookup:
   targets: list[list[str]]
 
 
+def convert_sheet(rows: list[list[str]]) -> list[list[str]]:
+  """Rearranges the downloaded sheet into CSV_HEADER's layout, finding each column by its header.
+  The first column whose header ends in a side's name is that side's own encoding, the second is its
+  target list. Other columns are dropped, and every row is kept so row numbers still match the sheet."""
+  if not rows:
+    raise ValueError("the sheet is empty")
+  header = [cell.strip().lower() for cell in rows[0]]
+
+  def find(name: str) -> int:
+    matches = [i for i, cell in enumerate(header) if cell == name.lower()]
+    if len(matches) != 1:
+      raise ValueError(f"expected one {name!r} column in the sheet header, found {len(matches)}: {rows[0]}")
+    return matches[0]
+
+  columns = [find("Room Weight"), find("Categories"), find(HEADER)]
+  sides, targets = [], []
+  for side in SIDES:
+    matches = [i for i, cell in enumerate(header) if cell.endswith(side)]
+    if len(matches) != 2:
+      raise ValueError(f"expected 2 columns ending in {side!r} in the sheet header (own encoding, then "
+                       f"targets), found {len(matches)}: {rows[0]}")
+    sides.append(matches[0])
+    targets.append(matches[1])
+  columns += sides + targets
+
+  converted = [CSV_HEADER]
+  for row in rows[1:]:
+    converted.append([row[i] if i < len(row) else "" for i in columns])
+  return converted
+
 def fetch(path: Path) -> None:
-  """Downloads the SHEET_TAB tab of the sheet as CSV."""
+  """Downloads the SHEET_TAB tab of the sheet and saves it to `path` in CSV_HEADER's layout."""
   with urllib.request.urlopen(SHEET_URL, timeout=30) as response:
-    text = response.read().decode("utf-8")
-  path.write_text(text, encoding="utf-8", newline="")
-  print(f"downloaded {SHEET_TAB} to {path}")
+    text = response.read().decode("utf-8-sig")
+  rows = convert_sheet(list(csv.reader(io.StringIO(text))))
+  with open(path, "w", encoding="utf-8", newline="") as f:
+    csv.writer(f, quoting=csv.QUOTE_ALL).writerows(rows)
+  print(f"downloaded {SHEET_TAB} to {path}", flush=True)
 
 def parse_list(cell: str) -> list[str]:
   """`(open, close)` or `open, close` or `open` -> ['open', 'close']. Keeps empty entries for errors."""
@@ -330,7 +371,11 @@ def main(argv: list[str]) -> int:
     help=f"a CSV export of the sheet (default: download the sheet to {CSV_PATH.name} first)")
   args = parser.parse_args(argv)
   if args.csv is None:
-    fetch(CSV_PATH)
+    try:
+      fetch(CSV_PATH)
+    except ValueError as e:
+      print(f"{SHEET_TAB}: {e}", file=sys.stderr)
+      return 1
     args.csv = CSV_PATH
   elif not args.csv.is_file():
     parser.error(f"{args.csv}: file not found")

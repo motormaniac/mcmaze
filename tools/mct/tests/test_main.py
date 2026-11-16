@@ -28,6 +28,7 @@ def test_mct_goes_all_the_way_to_a_schematic(dirs: Path) -> None:
   (["--width", "4"], (4, 4)),                # length defaults to width
   (["--width", "4", "--length", "7"], (4, 7)),
   (["--length", "3"], (16, 3)),
+  (["--w", "4", "--l", "7"], (4, 7)),        # short aliases
 ])
 def test_width_and_length(dirs: Path, args: list[str], size: tuple[int, int]) -> None:
   (dirs / "walls.mct").write_text(MCT)

@@ -4,7 +4,7 @@
   uv run poe mct --ir maze2/src/walls.mct          -- .mct -> maze2/ir/walls.irt
   uv run poe mct --ir --schem maze2/src/walls.mct  -- .mct -> both of the above
   uv run poe mct maze2/ir/walls.irt                -- .irt -> maze2/schem/walls.schem
-  options: -o PATH  --width 16  --length 16  --gap 3  --track-output
+  options: -o PATH  --width/--w 16  --length/--l 16  --gap 3  --track-output
 
 Output goes to the ir/ and schem/ folders of the input's project: the folder that holds the input's
 src/ or ir/ folder, or else the folder the input is in.
@@ -71,8 +71,8 @@ def main(argv: list[str]) -> int:
     help="write a schematic to the project's schem/ (the default, unless --ir is given)")
   parser.add_argument("-o", type=Path, metavar="PATH",
     help="write the output here (only with one input file and one of --ir/--schem)")
-  parser.add_argument("--width", type=int, default=16, help="blocks in each row, east-west (x) (default 16)")
-  parser.add_argument("--length", type=int,
+  parser.add_argument("--width", "--w", type=int, default=16, help="blocks in each row, east-west (x) (default 16)")
+  parser.add_argument("--length", "--l", type=int,
     help="rows in each layer, north-south (z) (default: same as --width)")
   parser.add_argument("--gap", type=int, default=3, help="empty blocks between layers (default 3)")
   parser.add_argument("--track-output", action="store_true", help="have command blocks keep their last output")

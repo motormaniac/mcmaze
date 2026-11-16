@@ -13,10 +13,6 @@ func $spawn_constraint () (
   kill @e[$CONSTRAINT];
   for $dir in (north, east, south, west, up, down) (
     scoreboard players set @e[$GRAPH,tag=constraint,tag=new] $dir $CONSTRAINT_ENCODING_TYPE;
-    scoreboard players set @e[$GRAPH,tag=constraint,tag=new] target_${dir}1 $CONSTRAINT_ENCODING_TYPE;
-    for $k in 2..$TARGET_AMOUNT (
-      scoreboard players set @e[$GRAPH,tag=constraint,tag=new] target_${dir}$k -1;
-    )
   )
   tag @e[$GRAPH,tag=constraint,tag=new] remove new;
 )
@@ -57,10 +53,54 @@ func $enable_test_cases() (
   $enable_category(t_tri);
 )
 
+func $place_single_constraint($offset) (
+  execute as @e[type=item_display,name=placeConstraints] at @s run summon item_display $offset {CustomName:graph,$ITEM_DISPLAY_NBT,Tags:[constraint]};
+)
+
+-- the dimensions of the outer bounds (so subtract 2 from each to get the inner bounds)
+$WIDTH = 13;
+$LENGTH = 13;
+$HEIGHT = 4;
+-- one less than each dimension above (no arithmetic in .mct, so keep these in sync by hand)
+$WIDTH_INNER_END = 12;
+$LENGTH_INNER_END = 12;
+
+-- places one constraint on every cell of the outer shell, each exactly once:
+-- the west/east faces take their full area, the north/south faces skip the x edges
+-- the west/east faces already cover, and the bottom/top faces skip both
+func $place_constraints() (
+  #-- west and east faces
+  for $x in (0, $WIDTH) (
+    for $y in 0..$HEIGHT (
+      for $z in 0..$LENGTH (
+        $place_single_constraint(~$x ~$y ~$z);
+      )
+    )
+  )
+  #-- north and south faces
+  for $z in (0, $LENGTH) (
+    for $x in 1..$WIDTH_INNER_END (
+      for $y in 0..$HEIGHT (
+        $place_single_constraint(~$x ~$y ~$z);
+      )
+    )
+  )
+  #-- bottom and top faces
+  for $y in (0, $HEIGHT) (
+    for $x in 1..$WIDTH_INNER_END (
+      for $z in 1..$LENGTH_INNER_END (
+        $place_single_constraint(~$x ~$y ~$z);
+      )
+    )
+  )
+)
+
+
 func $main() (
-  #-- Spawn constraint
+  -- #-- Spawn constraint
   -- $spawn_constraint();
   -- #-- Remove constraint
   -- $remove_constraint();
-  $enable_test_cases();
+  #-- place_constraints
+  $place_constraints();
 )

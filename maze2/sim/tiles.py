@@ -102,11 +102,9 @@ def encoding_ids(path: Path) -> dict[str, int]:
 
 def write_csv(base: list[Tile], path: Path) -> None:
   """Writes rooms (default rotation only) in the room sheet layout, with weight 0."""
-  sides = ["North", "East", "South", "West", "Up", "Down"]
-  header = ["Room Weight", "Categories", "Structure Name", *sides, *(f"Target {s}" for s in sides)]
   with open(path, "w", newline="", encoding="utf-8") as f:
     out = csv.writer(f)
-    out.writerow(header)
+    out.writerow(sheet.CSV_HEADER)
     for tile in base:
       out.writerow(["0", ", ".join(tile.categories), tile.name, *tile.phys,
                     *(", ".join(t) for t in tile.targets)])

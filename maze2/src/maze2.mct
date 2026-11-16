@@ -221,7 +221,7 @@ execute store result score .noneCount var run execute if entity @e[type=item_dis
 ]--
 
 -- Narrow the lookups down using the neighbor in direction $dir
-func $filter_side ($dir) (
+func $old_filter_side ($dir) (
   #-- filter side $dir
   -- bool of whether this is a strong neighbor or not
   scoreboard players set .strong var 0;
@@ -250,6 +250,38 @@ func $filter_side ($dir) (
     as @e[$LOOKUP,scores={filter=1}]
     for $k in 1..$TARGET_AMOUNT (
       unless score @s $dir = .target$k var
+    )
+    run scoreboard players set @s filter 0;
+  tag @e[$GRAPH,tag=target] remove target;
+)
+
+
+func $filter_side($dir) (
+  #-- filter side $dir
+  -- bool of whether this is a strong neighbor or not
+  scoreboard players set .strong var 0;
+  -- store the physical encoding of the target cell (use -1 for null)
+  scoreboard players set .target var -1;
+  execute as @e[$GRAPH,tag=select] at @s positioned $offset[$dir] run tag @n[$GRAPH,distance=..1] add target;
+  scoreboard players operation .target var = @n[$GRAPH,tag=target] $opposite[$dir];
+  -- it's a strong neighbor if its edit count is greater, or if the neighbor is a constraint
+  execute if score @n[$GRAPH,tag=select] edit < @n[$GRAPH,tag=target] edit run scoreboard players set .strong var 1;
+  execute if entity @n[$GRAPH,tag=target,tag=constraint] run scoreboard players set .strong var 1;
+  -- each lookup compares all 6 of its target encodings against the .target var
+  -- if there are no weak matches, remove weak
+  -- if .target is empty, that means this is an empty neighbor. Skip empty neighbors
+  execute unless score .target var matches -1
+    as @e[$LOOKUP,scores={filter=2}]
+    for $k in 1..$TARGET_AMOUNT (
+      unless score @s target_$dir$k = .target var
+    )
+    run scoreboard players set @s filter 1;
+  -- if there are no strong matches, remove strong
+  execute unless score .target var matches -1
+    if score .strong var matches 1
+    as @e[$LOOKUP,scores={filter=1}]
+    for $k in 1..$TARGET_AMOUNT (
+      unless score @s target_$dir$k = .target var
     )
     run scoreboard players set @s filter 0;
   tag @e[$GRAPH,tag=target] remove target;
