@@ -7,7 +7,7 @@ func $main () (
       scoreboard objectives add target_$dir$k dummy;
     )
   )
-  for $x in (var, edit, i, ref, enabled, filter, rng, rngWeight) (
+  for $x in (var, edit, priority, i, ref, enabled, rng, rngWeight) (
     scoreboard objectives add $x dummy;
   )
 )
