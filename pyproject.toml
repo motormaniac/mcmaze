@@ -25,3 +25,11 @@ cases = { cmd = "python ${POE_ROOT}/maze2/manual_test/make_cases.py", help = "Re
 sim = { cmd = "python ${POE_ROOT}/maze2/sim/simulate.py", cwd = "${POE_PWD}", help = "Simulate the maze2 algorithm (check, run, fuzz)" }
 mct-all = { cmd = "python tools/mct/main.py --ir --schem maze2/src/init.mct maze2/src/maze2.mct maze2/src/constraint.mct maze2/src/visualize.mct maze2/ir/lookups.irt maze2/ir/place.irt", help = "Build every maze2 schematic from the existing IR and .mct files (no download)" }
 build = { sequence = ["rooms", "mct-all"], help = "Download the room sheet, then build every maze2 IR file and schematic" }
+
+[tool.poe.tasks.rooms-schem]
+help = "Download the room sheet, then build lookups.schem (32x32) and place.schem (12x12)"
+sequence = [
+  "rooms",
+  { cmd = "python tools/mct/main.py maze2/ir/lookups.irt --w 32 --l 32" },
+  { cmd = "python tools/mct/main.py maze2/ir/place.irt --w 12 --l 12" },
+]
