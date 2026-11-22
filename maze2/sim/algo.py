@@ -1,30 +1,37 @@
-"""A step-by-step model of the algorithm in maze2/src/maze2.mct. One step = one BFS iteration = 1 gt.
+"""A tick-by-tick model of $bfs_iterate in maze2/src/maze2.mct. One tick = one run of the chain = 1 gt.
 
-Modelled as the commands are written, with the fixes agreed on:
-  * an unfilled neighbor (no node yet, or a node that has no tile yet) is skipped: any encoding fits
-  * all 6 directions are checked, pushed and expanded (the commands only have N/E/S/W so far)
-  * a newly summoned node starts at edit 0
-  * constraint nodes count as having infinite edit, expose `wall` and target only `wall`
-  * pushing a node that is already queued does nothing (the `if score @s i matches -1` guard)
+`select` (the node being filled), its priority list and its ignored sides carry over between ticks.
+A tick:
 
-Step, for the popped node s:
-  filter    every lookup starts at level 2. A lookup that fails a filled neighbor's targets drops to
-            1; if that neighbor is strong (higher edit than s, or a constraint), it drops to 0.
-  level 2   if any lookup is at 2: pick among those.
-  level 1   else if any at 1: s.edit += 1, push every unqueued neighbor node whose edit is now below
-            s.edit, pick among level 1.
-  level 0   else: s.edit += 1, push s again, place nothing, and skip the rest of the step.
-  expand    summon and push a node on every empty neighbor position (constraints are nodes too,
-            so nothing is summoned past the bounds).
-  paste     place the picked lookup on s.
-  end       queue empty -> done. Any edit above LIMIT -> error.
+  pop       if there is no select: pop the queue into select, then look at each of its 6 sides
+              constraint      (bounds or a blocker) only lookups that target WALL on that side pass
+              node with tile  only lookups whose targets on that side include the node's facing
+                              encoding pass (not_$dir). The node joins the priority list with
+                              rng(1..10) + facing encoding id + edit * 1,000,000
+              node, no tile   (encodings -1) every lookup passes; not in the priority list
+              no node         summon one there (edit 0, no tile) and push it
+  filter    the lookups that pass every side that isn't ignored
+  pick      if select and the filter isn't empty: each candidate rolls random(0..100) + rngWeight and
+            the highest goes on select. select.edit += 1 and select is cleared
+  relax     clear the priority of every node at 0, then shift the list so its lowest is 0. If select
+            is still set and the list isn't empty: push every node at 0 and ignore its side, in
+            direction order (ties go together). Otherwise clear select: it gives up and keeps
+            whatever tile it had
+  end       no select and an empty queue -> done. Any edit above LIMIT -> error
+
+Modelling choices:
+  * edit counts are in units of one pick (1,000,000 in game)
+  * candidates that tie on the highest roll are broken at random (in game: whichever lookup entity
+    randChoose finds first)
 """
 
 import random
 from collections import deque
 from dataclasses import dataclass, field
 
-from tiles import Pos, Problem, accepts, add, wall_accepts
+from tiles import OPP, Pos, Problem, add, default_ids, fits, wall_fits
+
+EDIT = 1_000_000                         # one pick's worth of edit in game
 
 
 @dataclass(eq=False)
@@ -36,7 +43,8 @@ class Node:
 
 
 class Queue:
-  """First in, first out. Pushing a node that is already queued does nothing."""
+  """First in, first out. Pushing a node that is already queued does nothing (the `unless score @s i
+  matches 0..` guard)."""
 
   def __init__(self) -> None:
     self.nodes: deque[Node] = deque()
@@ -59,19 +67,22 @@ class Queue:
 
 @dataclass
 class Event:
-  """What one step did, for --trace."""
+  """What one tick did, for --trace."""
   tick: int
-  pos: Pos
+  pos: Pos                               # select
   edit_before: int
-  level: int = -1                        # 2, 1 or 0
+  popped: bool                           # select was popped this tick
+  ignored: list[int]                     # sides ignored when this tick's filter ran
   candidates: int = 0
   placed: str = ""
+  relaxed: list[int] = field(default_factory=list)   # sides ignored at the end of this tick
+  gave_up: bool = False
   pushed: list[Pos] = field(default_factory=list)
 
 
 @dataclass
 class Run:
-  outcome: str                           # "done", "error" (edit above LIMIT), "timeout" (tick cap)
+  outcome: str                           # "done" (queue empty), "error" (edit above LIMIT), "timeout" (tick cap)
   ticks: int
   peak_edit: int
   first_tick_at_edit: list[int]          # [k] = tick at which some edit first reached k
@@ -82,80 +93,104 @@ class Algorithm:
   def __init__(self, problem: Problem) -> None:
     self.problem = problem
     tiles = problem.tiles
-    # acc[d][b] = lookups a that pass the check against filled neighbor b on side d of the cell
-    self.acc = [[sum(1 << a for a, ta in enumerate(tiles) if accepts(ta, d, tb)) for tb in tiles]
-                for d in range(6)]
-    self.wall_acc = [sum(1 << a for a, ta in enumerate(tiles) if wall_accepts(ta, d, problem.wall))
-                     for d in range(6)]
+    # passes[d][b] = lookups that pass filled neighbor b on their side d
+    self.passes = [[sum(1 << a for a, ta in enumerate(tiles) if fits(ta, d, tb)) for tb in tiles]
+                   for d in range(6)]
+    self.wall_passes = [sum(1 << a for a, ta in enumerate(tiles) if wall_fits(ta, d, problem.wall))
+                        for d in range(6)]
+    ids = problem.ids if problem.ids is not None else default_ids(tiles, problem.wall)
+    # facing[d][b] = id of b's encoding that faces a select on b's side OPP[d]
+    self.facing = [[ids[tb.phys[OPP[d]]] for tb in tiles] for d in range(6)]
     self.full = (1 << len(tiles)) - 1
 
   def run(self, rng: random.Random, limit: int | None, tick_cap: int,
           trace: list[Event] | None = None) -> Run:
-    problem, tiles = self.problem, self.problem.tiles
+    problem, tiles, full = self.problem, self.problem.tiles, self.full
     nodes: dict[Pos, Node] = {}
     queue = Queue()
     start = Node((0, 0, 0))
     nodes[start.pos] = start
     queue.push(start)
-    peak, first_tick, tick = 0, [0], 0
 
-    def bump(node: Node) -> None:
-      nonlocal peak
-      node.edit += 1
-      if node.edit > peak:
-        peak = node.edit
-        first_tick.append(tick)
+    select: Node | None = None
+    passing = [full] * 6                 # per side of select: the lookups without not_$dir
+    ignored: list[int] = []
+    priority: dict[Node, int] = {}
+    side: dict[Node, int] = {}           # the neighbor score: which side of select a node is on
+    peak, first_tick, tick = 0, [0], 0
 
     while True:
       tick += 1
-      s = queue.pop()
-      event = Event(tick, s.pos, s.edit) if trace is not None else None
       pushed: list[Pos] = []
+      popped = select is None
 
-      weak, strong = self.full, self.full
-      for d in range(6):
-        q = add(s.pos, d)
-        if problem.blocked(q):
-          mask = self.wall_acc[d]
-          weak &= mask
-          strong &= mask
-          continue
-        n = nodes.get(q)
-        if n is None or n.tile is None:
-          continue                       # unfilled: wildcard
-        mask = self.acc[d][n.tile]
-        weak &= mask
-        if n.edit > s.edit:
-          strong &= mask
-      if weak:
-        level, pool = 2, weak
-      elif strong:
-        level, pool = 1, strong
-        bump(s)
+      # pop
+      if select is None:
+        select = queue.pop()
+        passing, ignored = [full] * 6, []
+        priority.clear()
+        side.clear()
         for d in range(6):
-          n = nodes.get(add(s.pos, d))
-          if n is not None and n.edit < s.edit and queue.push(n):
-            pushed.append(n.pos)
-      else:
-        level, pool = 0, 0
-        bump(s)
-        queue.push(s)
-        pushed.append(s.pos)
-      if level > 0:
-        for d in range(6):
-          q = add(s.pos, d)
-          if not problem.blocked(q) and q not in nodes:
-            n = Node(q)
-            nodes[q] = n
+          q = add(select.pos, d)
+          if problem.blocked(q):
+            passing[d] = self.wall_passes[d]
+            continue
+          n = nodes.get(q)
+          if n is None:
+            n = nodes[q] = Node(q)
             queue.push(n)
             pushed.append(q)
-        s.tile = pick(pool, rng)
+            continue
+          side[n] = d
+          if n.tile is not None:
+            passing[d] = self.passes[d][n.tile]
+            priority[n] = rng.randint(1, 10) + self.facing[d][n.tile] + n.edit * EDIT
+
+      event = Event(tick, select.pos, select.edit, popped, list(ignored)) if trace is not None else None
+
+      # filter and pick
+      pool = full
+      for mask in passing:
+        pool &= mask
+      if pool:
+        select.tile = pick(pool, tiles, rng)
+        select.edit += 1
+        if select.edit > peak:
+          peak = select.edit
+          first_tick.append(tick)
+        if event is not None:
+          event.placed = tiles[select.tile].label
+        select = None
+
+      # relax
+      for n in [n for n, p in priority.items() if p == 0]:
+        del priority[n]
+      if priority:
+        low = min(priority.values())
+        for n in priority:
+          priority[n] -= low
+      if select is not None and priority:
+        at_zero = {side[n]: n for n, p in priority.items() if p == 0 and n in side}
+        for d in sorted(at_zero):
+          n = at_zero[d]
+          if queue.push(n):
+            pushed.append(n.pos)
+          del side[n]
+          passing[d] = full
+          ignored.append(d)
+          if event is not None:
+            event.relaxed.append(d)
+      elif select is not None:
+        select = None
+        if event is not None:
+          event.gave_up = True
+
       if event is not None and trace is not None:
-        event.level, event.candidates, event.pushed = level, pool.bit_count(), pushed
-        event.placed = tiles[s.tile].label if level > 0 and s.tile is not None else ""
+        event.candidates, event.pushed = pool.bit_count(), pushed
         trace.append(event)
 
-      if len(queue) == 0:
+      # end
+      if select is None and len(queue) == 0:
         outcome = "done"
       elif limit is not None and peak > limit:
         outcome = "error"
@@ -167,12 +202,16 @@ class Algorithm:
       return Run(outcome, tick, peak, first_tick, grid)
 
 
-def pick(mask: int, rng: random.Random) -> int:
-  """A uniformly random set bit of mask."""
-  k = rng.randrange(mask.bit_count())
-  while True:
+def pick(mask: int, tiles: list, rng: random.Random) -> int:
+  """The lookup in mask with the highest random(0..100) + weight, ties broken at random."""
+  best, top = [], None
+  while mask:
     low = mask & -mask
-    if k == 0:
-      return low.bit_length() - 1
     mask ^= low
-    k -= 1
+    a = low.bit_length() - 1
+    roll = rng.randint(0, 100) + tiles[a].weight
+    if top is None or roll > top:
+      best, top = [a], roll
+    elif roll == top:
+      best.append(a)
+  return best[0] if len(best) == 1 else rng.choice(best)

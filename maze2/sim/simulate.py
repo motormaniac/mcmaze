@@ -4,13 +4,13 @@
       expand rotations, check reciprocity, flag likely typos, list encoding ids and wool colors
   uv run poe sim run rooms.csv --category NAME --size 4 1 4 [--constraint 1,0,2 ...]
       exact verdict (solvable or not), then many simulated runs: how long they take, how high edit
-      counts climb, and the false-error rate for each LIMIT
+      counts climb, how often the queue empties with a bad grid, and the false-error rate for each LIMIT
   uv run poe sim fuzz --instances 300
-      random small reciprocal inputs; reports any run that ends with a wrong answer or that looks
+      random small reciprocal inputs; reports any run that finishes with a bad grid or that looks
       stuck on a solvable input
 
 --size is X (width, east) Y (height, up) Z (length, south). Coordinates start at the start cell
-(0,0,0). One step of the algorithm is 1 gt; 20 gt = 1 s.
+(0,0,0). One tick of the algorithm is 1 gt; 20 gt = 1 s.
 """
 
 import argparse
@@ -60,11 +60,20 @@ def show_grid(problem: Problem, grid: dict[Pos, int | None]) -> str:
   return "\n".join(lines)
 
 
+def sides(ds: list[int]) -> str:
+  return ", ".join(DIRS[d] for d in ds)
+
+
 def show_event(e: Event) -> str:
-  what = {2: "fits all", 1: "fits strong only", 0: "fits nothing"}[e.level]
-  out = f"  {e.tick:>6}  {e.pos} edit {e.edit_before}: {what}, {e.candidates} candidates"
+  checked = f"ignoring {sides(e.ignored)}" if e.ignored else "all sides"
+  out = (f"  {e.tick:>6}  {e.pos} edit {e.edit_before}{' popped' if e.popped else ''}: "
+         f"{checked}, {e.candidates} candidates")
   if e.placed:
     out += f" -> {e.placed}"
+  elif e.gave_up:
+    out += "; gave up"
+  elif e.relaxed:
+    out += f"; ignore {sides(e.relaxed)} next"
   if e.pushed:
     out += f"; pushed {', '.join(map(str, e.pushed))}"
   return out
@@ -122,23 +131,28 @@ def trials(problem: Problem, count: int, seed: int, limit: int | None, tick_cap:
 def describe(problem: Problem, verdict: Verdict, runs: list[Run], limit_max: int) -> list[str]:
   """The report for one problem. Lines starting with 'BUG' or 'WARNING' are anomalies."""
   out = []
-  done = [r for r in runs if r.outcome == "done"]
-  for r in done:
+  done, bad_runs, example = [], [], ""
+  for r in runs:
+    if r.outcome != "done":
+      continue
     unfilled, bad = check_filling(problem, r.grid)
-    if bad:
-      out.append(f"BUG: a run finished with {len(bad)} mismatched pairs, e.g. {bad[0]}")
-      break
-    if unfilled:
-      out.append(f"BUG: a run finished with {len(unfilled)} cells never reached, e.g. "
-                 f"{unfilled[0]} (separate region the BFS can't reach)")
-      break
-  counts = {k: sum(r.outcome == k for r in runs) for k in ("done", "error", "timeout")}
-  out.append(f"{len(runs)} runs: {counts['done']} finished, {counts['error']} passed "
-             f"LIMIT={limit_max}, {counts['timeout']} hit the tick cap")
+    if not unfilled and not bad:
+      done.append(r)
+      continue
+    bad_runs.append(r)
+    if not example:
+      example = (f"{len(bad)} mismatched pairs, e.g. {bad[0]}" if bad else
+                 f"{len(unfilled)} unfilled cells, e.g. {unfilled[0]}")
+  counts = {k: sum(r.outcome == k for r in runs) for k in ("error", "timeout")}
+  out.append(f"{len(runs)} runs: {len(done)} finished, {len(bad_runs)} emptied the queue with a bad "
+             f"grid, {counts['error']} passed LIMIT={limit_max}, {counts['timeout']} hit the tick cap")
+  if bad_runs:
+    out.append(f"WARNING: {len(bad_runs)} runs emptied the queue with a bad grid ({example}). A select "
+               f"that runs out of sides gives up and keeps its old tile")
 
   if verdict.status == "unsolvable":
     if done:
-      out.append(f"BUG: {len(done)} runs finished on an input with no solution")
+      out.append(f"BUG: {len(done)} runs finished with a valid grid on an input with no solution")
     if counts["timeout"]:
       out.append("WARNING: runs reached the tick cap without edits passing LIMIT")
     out.append("Expected: error. Time until an edit first passes LIMIT:")
@@ -155,7 +169,7 @@ def describe(problem: Problem, verdict: Verdict, runs: list[Run], limit_max: int
   else:
     out.append("Expected: finish.")
   if done:
-    out.append(f"  steps to finish: {spread([r.ticks for r in done])} "
+    out.append(f"  ticks to finish: {spread([r.ticks for r in done])} "
                f"(median {gt(statistics.median([r.ticks for r in done]))})")
     out.append(f"  peak edit:       {spread([r.peak_edit for r in done])}")
   out.append("  false-error rate by LIMIT (fraction of runs whose peak edit passes it):")
@@ -163,7 +177,7 @@ def describe(problem: Problem, verdict: Verdict, runs: list[Run], limit_max: int
   for L in LIMITS:
     if L > limit_max:
       break
-    failed = sum(r.outcome != "done" or r.peak_edit > L for r in runs)
+    failed = len(runs) - sum(r.peak_edit <= L for r in done)
     out.append(f"    LIMIT {L:>4}: {failed}/{len(runs)}")
     if failed == 0 and safe is None:
       safe = L
@@ -177,7 +191,7 @@ def describe(problem: Problem, verdict: Verdict, runs: list[Run], limit_max: int
 
 def cmd_run(args: argparse.Namespace) -> int:
   tiles = load(args.csv, args.wall, args.allow_nonreciprocal, args.category)
-  problem = Problem(tiles, tuple(args.size), frozenset(args.constraint), args.wall)
+  problem = Problem(tiles, tuple(args.size), frozenset(args.constraint), args.wall, encoding_ids(args.csv))
   print(f"{len(tiles) // 4} cell types ({len(tiles)} lookups), grid {problem.size}, "
         f"{len(problem.constraints)} interior constraints, {len(problem.free_cells())} cells")
   verdict = solve(problem, args.budget)
@@ -190,11 +204,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     trace: list[Event] = []
     run = Algorithm(problem).run(random.Random(args.seed * 1_000_003), args.limit_max,
                                  args.tick_cap, trace)
-    print(f"trace of run 0 ({run.outcome} after {run.ticks} steps):")
+    print(f"trace of run 0 ({run.outcome} after {run.ticks} ticks):")
     for e in trace[:args.trace]:
       print(show_event(e))
     if len(trace) > args.trace:
-      print(f"  ... {len(trace) - args.trace} more steps")
+      print(f"  ... {len(trace) - args.trace} more ticks")
     print(show_grid(problem, run.grid))
 
   runs = trials(problem, args.trials, args.seed, args.limit_max, args.tick_cap)
@@ -294,9 +308,9 @@ def cmd_fuzz(args: argparse.Namespace) -> int:
     runs = trials(problem, args.trials, seed, limit, args.tick_cap)
     report = describe(problem, verdict, runs, args.limit if limit else 10**9)
     flagged = [line for line in report if line.startswith(("BUG", "WARNING"))]
-    if verdict.status == "solvable" and any(r.outcome != "done" for r in runs):
-      stuck = sum(r.outcome != "done" for r in runs)
-      flagged.append(f"POSSIBLE TRAP: {stuck}/{len(runs)} runs didn't finish in {args.tick_cap} steps")
+    if verdict.status == "solvable" and any(r.outcome == "timeout" for r in runs):
+      stuck = sum(r.outcome == "timeout" for r in runs)
+      flagged.append(f"POSSIBLE TRAP: {stuck}/{len(runs)} runs didn't finish in {args.tick_cap} ticks")
     if not flagged:
       continue
     anomalies += 1
@@ -340,8 +354,8 @@ def main(argv: list[str]) -> int:
   run.add_argument("--tick-cap", type=int, default=200_000)
   run.add_argument("--budget", type=int, default=2_000_000, help="exact solver search nodes")
   run.add_argument("--witness", action="store_true", help="print one valid filling")
-  run.add_argument("--trace", type=int, nargs="?", const=200, metavar="STEPS",
-                   help="print the first STEPS steps of run 0")
+  run.add_argument("--trace", type=int, nargs="?", const=200, metavar="TICKS",
+                   help="print the first TICKS ticks of run 0")
   run.add_argument("--allow-nonreciprocal", action="store_true")
 
   fuzz = sub.add_parser("fuzz", help="random small inputs, looking for wrong answers or traps")

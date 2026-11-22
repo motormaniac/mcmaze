@@ -2,17 +2,19 @@
 
 Directions are indexed N, E, S, W, U, D = 0..5. North is -Z, east +X, south +Z, west -X, up +Y, down -Y.
 
-Matching rule (from maze2/src/maze2.mct): a cell `a` may sit on side `d` of a filled cell `b` when
-a.phys[d] is one of b.targets[opposite(d)]. The algorithm only checks that one half. Inputs must be
-reciprocal, which makes the other half (b.phys[opp] in a.targets[d]) hold whenever the first does.
+Matching rule (from maze2/src/maze2.mct): lookup `a` may go on a cell whose filled neighbor on side `d`
+is `b` when b.phys[opposite(d)] is one of a.targets[d] (`fits`). The algorithm only checks that one
+half. Inputs must be reciprocal, which makes the other half (a.phys[d] in b.targets[opp]) hold whenever
+the first does.
 
-Constraint nodes (the maze bounds and any interior blockers) expose `wall` as their encoding and
-target only `wall`, on every side.
+Constraint nodes (the maze bounds and any interior blockers) expose WALL as their encoding and
+target only WALL, on every side. WALL is rooms.py's constraint encoding, so it is always id 0, like in game.
 """
 
 import csv
 import io
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -20,8 +22,6 @@ DIRS = ("north", "east", "south", "west", "up", "down")
 N, E, S, W, U, D = range(6)
 OPP = (S, W, N, E, D, U)
 OFFSET = ((0, 0, -1), (1, 0, 0), (0, 0, 1), (-1, 0, 0), (0, 1, 0), (0, -1, 0))
-WALL = "wall"
-
 Pos = tuple[int, int, int]
 
 
@@ -37,6 +37,7 @@ class Tile:
   phys: tuple[str, ...]                  # 6 encodings, indexed by direction
   targets: tuple[tuple[str, ...], ...]   # 6 non-empty target lists, in slot order
   categories: tuple[str, ...] = field(default=(), compare=False)
+  weight: int = field(default=0, compare=False)  # the room's rngWeight, -100..100
 
   @property
   def label(self) -> str:
@@ -48,7 +49,7 @@ def rotate(tile: Tile) -> Tile:
   def turn(faces: tuple) -> tuple:
     return (faces[W], faces[N], faces[E], faces[S], faces[U], faces[D])
   return Tile(tile.name, (tile.rotation + 90) % 360, turn(tile.phys), turn(tile.targets),
-              tile.categories)
+              tile.categories, tile.weight)
 
 
 def rotations(tile: Tile) -> list[Tile]:
@@ -68,6 +69,8 @@ def add(p: Pos, d: int) -> Pos:
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "rooms"))
 import rooms as sheet  # noqa: E402
+
+WALL = sheet.CONSTRAINT_ENCODING  # `constraint`, always id 0
 
 WOOL = ("white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray",
         "cyan", "purple", "blue", "brown", "green", "red", "black")  # visualize.mct colors by id
@@ -89,9 +92,9 @@ def read_csv(path: Path, categories: list[str] | None = None) -> list[Tile]:
     rooms = [r for r in rooms if set(r.categories) & set(categories)]
     if not rooms:
       raise TileError(f"{path}: no rooms in categories {categories}")
-  # rotated by rooms.py, like the in-game lookups, so `_R` encodings turn exactly as they do in game
+  # rotated by rooms.py, like the in-game lookups, so rotating encodings turn exactly as they do in game
   return [Tile(lookup.room.name, 90 * lookup.rotation, tuple(lookup.sides),
-               tuple(tuple(t) for t in lookup.targets), tuple(lookup.room.categories))
+               tuple(tuple(t) for t in lookup.targets), tuple(lookup.room.categories), lookup.room.weight)
           for lookup in sheet.lookups(rooms)]
 
 
@@ -100,14 +103,20 @@ def encoding_ids(path: Path) -> dict[str, int]:
   return sheet.encoding_ids(read_rooms(path))
 
 
-def write_csv(base: list[Tile], path: Path) -> None:
-  """Writes rooms (default rotation only) in the room sheet layout, with weight 0."""
+def write_csv(base: list[Tile], path: Path, inner: Iterable[str] = (), rotating: Iterable[str] = ()) -> None:
+  """Writes rooms (default rotation only) in the room CSV layout. In is checked on every
+  side whose encoding is in `inner`, and Rot on every up or down side whose encoding is in `rotating`."""
+  inner, rotating = set(inner), set(rotating)
+  def flag(on: bool) -> str:
+    return sheet.TRUE if on else ""
   with open(path, "w", newline="", encoding="utf-8") as f:
     out = csv.writer(f)
     out.writerow(sheet.CSV_HEADER)
     for tile in base:
-      out.writerow(["0", ", ".join(tile.categories), tile.name, *tile.phys,
-                    *(", ".join(t) for t in tile.targets)])
+      out.writerow([str(tile.weight), ", ".join(tile.categories), tile.name, *tile.phys,
+                    *(flag(e in inner) for e in tile.phys),
+                    *(flag(tile.phys[DIRS.index(side)] in rotating) for side in sheet.ROTATING_SIDES),
+                    *(", ".join(t) for t in tile.targets), flag(False)])
 
 
 # ------------------------------------------------------------------------------------------ problem
@@ -118,6 +127,7 @@ class Problem:
   size: tuple[int, int, int]             # X (width), Y (height), Z (length)
   constraints: frozenset[Pos] = frozenset()
   wall: str = WALL
+  ids: dict[str, int] | None = None      # in-game encoding numbers; None numbers them like default_ids
 
   def __post_init__(self) -> None:
     if min(self.size) < 1:
@@ -141,8 +151,27 @@ class Problem:
             if (x, y, z) not in self.constraints]
 
 
+def default_ids(tiles: list[Tile], wall: str = WALL) -> dict[str, int]:
+  """Encoding numbers for inputs that don't come from a sheet: wall is 0, the rest in sorted order."""
+  ids = {wall: 0}
+  for e in sorted({e for t in tiles for e in t.phys} - {wall}):
+    ids[e] = len(ids)
+  return ids
+
+
+def fits(a: Tile, d: int, b: Tile) -> bool:
+  """The algorithm's check: does lookup `a` pass filled neighbor `b` on its side d? `b`'s encoding
+  facing `a` has to be one of a's targets on that side."""
+  return b.phys[OPP[d]] in a.targets[d]
+
+
+def wall_fits(a: Tile, d: int, wall: str = WALL) -> bool:
+  """The algorithm's check against a constraint on side d of `a`."""
+  return wall in a.targets[d]
+
+
 def accepts(a: Tile, d: int, b: Tile) -> bool:
-  """The algorithm's one-sided check: may `a` sit on side d of filled cell `b`?"""
+  """The other half of the check: may `a` sit on side d of filled cell `b` by b's targets?"""
   return a.phys[d] in b.targets[OPP[d]]
 
 
@@ -152,7 +181,7 @@ def matches(a: Tile, d: int, b: Tile) -> bool:
 
 
 def wall_accepts(a: Tile, d: int, wall: str = WALL) -> bool:
-  """The algorithm's check against a constraint on side d of `a`."""
+  """The other half of the check against a constraint on side d of `a`."""
   return a.phys[d] == wall
 
 
