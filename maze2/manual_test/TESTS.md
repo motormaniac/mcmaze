@@ -34,8 +34,9 @@ bounds.
 
 ## Rooms (compile once)
 
-Put these 35 rows in the sheet (they're also in [test_rooms.csv](test_rooms.csv)). Every room has
-weight 0. Structure names don't matter.
+Put these 35 rooms in the sheet (they're also in [test_rooms.csv](test_rooms.csv)). In the sheet,
+each one is a This row with the encodings and a Target row under it with the target lists, with every
+In? and Rot? box unchecked. Every room has weight 0. Structure names don't matter.
 
 The walls use the `constraint` encoding, so rooms can sit against constraint nodes (which only accept
 id 0). `constraint` is always id 0, and the other encodings are numbered from 1 in order of first
@@ -88,20 +89,16 @@ nodes don't change.
 | 0 | t_tri | `test:tri_end_side` | end_side | constraint | constraint | constraint | constraint | constraint | mid | constraint | constraint | constraint | constraint | constraint |
 | 0 | t_tri | `test:tri_end_up` | constraint | constraint | constraint | constraint | end_up | constraint | constraint | constraint | constraint | constraint | mid | constraint |
 | 0 | t_tri | `test:tri_end_down` | constraint | constraint | constraint | constraint | constraint | end_down | constraint | constraint | constraint | constraint | constraint | mid |
-| 0 | t_tri | `test:tri_mid_straight` | mid | constraint | mid | constraint | constraint | constraint | end_up, end_side, end_down | constraint | end_up, end_side, end_down | constraint | constraint | constraint |
-| 0 | t_tri | `test:tri_mid_corner` | mid | mid | constraint | constraint | constraint | constraint | end_up, end_side, end_down | end_up, end_side, end_down | constraint | constraint | constraint | constraint |
-| 0 | t_tri | `test:tri_mid_side_up` | mid | constraint | constraint | constraint | mid | constraint | end_up, end_side, end_down | constraint | constraint | constraint | end_up, end_side, end_down | constraint |
-| 0 | t_tri | `test:tri_mid_side_down` | mid | constraint | constraint | constraint | constraint | mid | end_up, end_side, end_down | constraint | constraint | constraint | constraint | end_up, end_side, end_down |
-| 0 | t_tri | `test:tri_mid_up_down` | constraint | constraint | constraint | constraint | mid | mid | constraint | constraint | constraint | constraint | end_up, end_side, end_down | end_up, end_side, end_down |
+| 0 | t_tri | `test:tri_mid_straight` | mid | constraint | mid | constraint | constraint | constraint | open, end_side, door | constraint | open, end_side, door | constraint | constraint | constraint |
+| 0 | t_tri | `test:tri_mid_corner` | mid | mid | constraint | constraint | constraint | constraint | open, end_side, door | open, end_side, door | constraint | constraint | constraint | constraint |
+| 0 | t_tri | `test:tri_mid_side_up` | mid | constraint | constraint | constraint | mid | constraint | open, end_side, door | constraint | constraint | constraint | open, hatch, end_down | constraint |
+| 0 | t_tri | `test:tri_mid_side_down` | mid | constraint | constraint | constraint | constraint | mid | open, end_side, door | constraint | constraint | constraint | constraint | end_up, open, hatch |
+| 0 | t_tri | `test:tri_mid_up_down` | constraint | constraint | constraint | constraint | mid | mid | constraint | constraint | constraint | constraint | open, hatch, end_down | end_up, open, hatch |
 
 ## Each run
 
 1. Kill the old non-constraint graph nodes and place the constraints for the test's layout.
-2. Enable only the test's category:
-   ```
-   scoreboard players set @e[type=item_display,name=lookup] enabled 0
-   scoreboard players set @e[type=item_display,name=lookup,tag=cat_<category>] enabled 1
-   ```
+2. Enable only the test's category
 3. Set `.maxEdit`, run init at `S`, run the loop until it stops, then run `visualize`.
 
 **A finished run passes when** every cell is filled, every face against a constraint is white, and
@@ -290,8 +287,8 @@ y = -1: below the grid (bottom bound), 6 constraints, -7 blocks from start
 
 ## Tests 6–8: triominoes
 
-These rooms are the first where matching faces have **different encodings**, and where a target list
-has **more than one real match**. In tests 1–5, every face matched its own encoding (join to join,
+These rooms are the first where matching faces have **different encodings**, and where the matching
+slot of a target list **changes with direction**. In tests 1–5, every face matched its own encoding (join to join,
 door to door), so a filter that compared a face with the neighbor's *face* instead of its *target
 list* would pass all of them. These tests catch that.
 
@@ -300,7 +297,11 @@ The rooms are two kinds of pieces:
 - **Ends** have one connecting face. `end_side` (lime) is on the north face, `end_up` (gray) on the up
   face, `end_down` (light gray) on the down face. An end face accepts only `mid`.
 - **Middles** have two `mid` faces (pink), in every pairing: straight, corner, side + up, side + down,
-  up + down. A mid face accepts `end_up, end_side, end_down`, in that slot order.
+  up + down. A mid face's list has 3 slots, with the one end that can reach it in the slot for its
+  direction: a down face lists `end_up, open, hatch`, a side face `open, end_side, door`, and an up
+  face `open, hatch, end_down`. `open`, `hatch` and `door` come from other tests' rooms, so they never
+  match here. They're there because the room build rejects a target that no room has on the side it
+  faces.
 
 Every other face is a white wall (`constraint`) that accepts only `constraint`. Ends can't join
 ends, and middles can't join middles, so every finished piece is end, middle, end: **3 cells** in a straight line or an L, flat or

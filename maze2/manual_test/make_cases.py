@@ -1,4 +1,4 @@
-"""Writes the in-game test rooms for maze2 to maze2/manual_test/test_rooms.csv (room sheet layout).
+"""Writes the in-game test rooms for maze2 to maze2/manual_test/test_rooms.csv (the room CSV layout in rooms.py).
 
   uv run poe cases
 
@@ -90,16 +90,23 @@ def tri() -> list[Tile]:
   join ends, and middles never join middles, so every piece is end-middle-end: 3 cells.
 
   Unlike the earlier tests, matching faces have different encodings (end_side meets mid), and the
-  mid list has 3 real targets. Each end encoding only exists on one side of one room, so which slot
-  of the mid list matches depends on where the end is: up is slot 1, side slot 2, down slot 3."""
-  mid_targets = ["end_up", "end_side", "end_down"]
-  targets = {"mid": mid_targets, **{e: ["mid"] for e in mid_targets}}
+  mid lists have 3 targets. Each end encoding only exists on one side of one room, so which slot of
+  the mid list matches depends on where the end is: below the middle is slot 1, beside it slot 2,
+  above it slot 3. The other slots hold encodings that other tests' rooms have on the side the mid
+  face meets (so rooms.py accepts them), but no t_tri room has, so they never match in this test."""
+  N, E, S, U, D = 0, 1, 2, 4, 5
+  mid_targets = {
+    D: ["end_up", "open", "hatch"], # meets the up face of the room below
+    "side": ["open", "end_side", "door"],
+    U: ["open", "hatch", "end_down"], # meets the down face of the room above
+  }
 
   def piece(name: str, faces: dict[int, str]) -> Tile:
     phys = [faces.get(side, WALL) for side in range(6)]
-    return room(f"test:tri_{name}", phys, [targets.get(e, [WALL]) for e in phys], ["t_tri"])
+    targets = [mid_targets[side if side in (U, D) else "side"] if e == "mid" else ["mid"] if e.startswith("end_")
+               else [WALL] for side, e in enumerate(phys)]
+    return room(f"test:tri_{name}", phys, targets, ["t_tri"])
 
-  N, E, S, U, D = 0, 1, 2, 4, 5
   return [
     piece("end_side", {N: "end_side"}),
     piece("end_up", {U: "end_up"}),

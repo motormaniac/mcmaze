@@ -1,36 +1,36 @@
-Room Weight,Categories,Structure Name,North,East,South,West,Up,Down,Target North,Target East,Target South,Target West,Target Up,Target Down
-0,t_basic,test:basic_closed_bottom,constraint,constraint,constraint,constraint,open,constraint,constraint,constraint,constraint,constraint,open,constraint
-0,t_basic,test:basic_deadend_bottom,open,constraint,constraint,constraint,open,constraint,open,constraint,constraint,constraint,open,constraint
-0,t_basic,test:basic_corner_bottom,open,open,constraint,constraint,open,constraint,open,open,constraint,constraint,open,constraint
-0,"t_basic, t_nofit",test:basic_straight_bottom,open,constraint,open,constraint,open,constraint,open,constraint,open,constraint,open,constraint
-0,"t_basic, t_nofit",test:basic_tee_bottom,open,open,open,constraint,open,constraint,open,open,open,constraint,open,constraint
-0,"t_basic, t_nofit",test:basic_cross_bottom,open,open,open,open,open,constraint,open,open,open,open,open,constraint
-0,t_basic,test:basic_closed_top,constraint,constraint,constraint,constraint,constraint,open,constraint,constraint,constraint,constraint,constraint,open
-0,t_basic,test:basic_deadend_top,open,constraint,constraint,constraint,constraint,open,open,constraint,constraint,constraint,constraint,open
-0,t_basic,test:basic_corner_top,open,open,constraint,constraint,constraint,open,open,open,constraint,constraint,constraint,open
-0,"t_basic, t_nofit",test:basic_straight_top,open,constraint,open,constraint,constraint,open,open,constraint,open,constraint,constraint,open
-0,"t_basic, t_nofit",test:basic_tee_top,open,open,open,constraint,constraint,open,open,open,open,constraint,constraint,open
-0,"t_basic, t_nofit",test:basic_cross_top,open,open,open,open,constraint,open,open,open,open,open,constraint,open
-0,t_slots,test:slots_closed_bottom,constraint,constraint,constraint,constraint,hatch,constraint,"open, constraint, join","open, constraint, join","open, constraint, join","open, constraint, join","join, hatch, open","open, constraint, join"
-0,t_slots,test:slots_deadend_bottom,door,constraint,constraint,constraint,hatch,constraint,"join, open, door","open, constraint, join","open, constraint, join","open, constraint, join","join, hatch, open","open, constraint, join"
-0,t_slots,test:slots_corner_bottom,door,door,constraint,constraint,hatch,constraint,"join, open, door","join, open, door","open, constraint, join","open, constraint, join","join, hatch, open","open, constraint, join"
-0,t_slots,test:slots_straight_bottom,door,constraint,door,constraint,hatch,constraint,"join, open, door","open, constraint, join","join, open, door","open, constraint, join","join, hatch, open","open, constraint, join"
-0,t_slots,test:slots_tee_bottom,door,door,door,constraint,hatch,constraint,"join, open, door","join, open, door","join, open, door","open, constraint, join","join, hatch, open","open, constraint, join"
-0,t_slots,test:slots_cross_bottom,door,door,door,door,hatch,constraint,"join, open, door","join, open, door","join, open, door","join, open, door","join, hatch, open","open, constraint, join"
-0,t_slots,test:slots_closed_top,constraint,constraint,constraint,constraint,constraint,hatch,"open, constraint, join","open, constraint, join","open, constraint, join","open, constraint, join","open, constraint, join","join, hatch, open"
-0,t_slots,test:slots_deadend_top,door,constraint,constraint,constraint,constraint,hatch,"join, open, door","open, constraint, join","open, constraint, join","open, constraint, join","open, constraint, join","join, hatch, open"
-0,t_slots,test:slots_corner_top,door,door,constraint,constraint,constraint,hatch,"join, open, door","join, open, door","open, constraint, join","open, constraint, join","open, constraint, join","join, hatch, open"
-0,t_slots,test:slots_straight_top,door,constraint,door,constraint,constraint,hatch,"join, open, door","open, constraint, join","join, open, door","open, constraint, join","open, constraint, join","join, hatch, open"
-0,t_slots,test:slots_tee_top,door,door,door,constraint,constraint,hatch,"join, open, door","join, open, door","join, open, door","open, constraint, join","open, constraint, join","join, hatch, open"
-0,t_slots,test:slots_cross_top,door,door,door,door,constraint,hatch,"join, open, door","join, open, door","join, open, door","join, open, door","open, constraint, join","join, hatch, open"
-0,t_domino,test:domino_half,join,constraint,constraint,constraint,constraint,constraint,join,constraint,constraint,constraint,constraint,constraint
-0,t_domino,test:domino_half_up,constraint,constraint,constraint,constraint,join,constraint,constraint,constraint,constraint,constraint,join,constraint
-0,t_domino,test:domino_half_down,constraint,constraint,constraint,constraint,constraint,join,constraint,constraint,constraint,constraint,constraint,join
-0,t_tri,test:tri_end_side,end_side,constraint,constraint,constraint,constraint,constraint,mid,constraint,constraint,constraint,constraint,constraint
-0,t_tri,test:tri_end_up,constraint,constraint,constraint,constraint,end_up,constraint,constraint,constraint,constraint,constraint,mid,constraint
-0,t_tri,test:tri_end_down,constraint,constraint,constraint,constraint,constraint,end_down,constraint,constraint,constraint,constraint,constraint,mid
-0,t_tri,test:tri_mid_straight,mid,constraint,mid,constraint,constraint,constraint,"end_up, end_side, end_down",constraint,"end_up, end_side, end_down",constraint,constraint,constraint
-0,t_tri,test:tri_mid_corner,mid,mid,constraint,constraint,constraint,constraint,"end_up, end_side, end_down","end_up, end_side, end_down",constraint,constraint,constraint,constraint
-0,t_tri,test:tri_mid_side_up,mid,constraint,constraint,constraint,mid,constraint,"end_up, end_side, end_down",constraint,constraint,constraint,"end_up, end_side, end_down",constraint
-0,t_tri,test:tri_mid_side_down,mid,constraint,constraint,constraint,constraint,mid,"end_up, end_side, end_down",constraint,constraint,constraint,constraint,"end_up, end_side, end_down"
-0,t_tri,test:tri_mid_up_down,constraint,constraint,constraint,constraint,mid,mid,constraint,constraint,constraint,constraint,"end_up, end_side, end_down","end_up, end_side, end_down"
+Room Weight,Categories,Structure Name,North,East,South,West,Up,Down,In North,In East,In South,In West,In Up,In Down,Rot Up,Rot Down,Target North,Target East,Target South,Target West,Target Up,Target Down,Disabled
+0,t_basic,test:basic_closed_bottom,constraint,constraint,constraint,constraint,open,constraint,,,,,,,,,constraint,constraint,constraint,constraint,open,constraint,
+0,t_basic,test:basic_deadend_bottom,open,constraint,constraint,constraint,open,constraint,,,,,,,,,open,constraint,constraint,constraint,open,constraint,
+0,t_basic,test:basic_corner_bottom,open,open,constraint,constraint,open,constraint,,,,,,,,,open,open,constraint,constraint,open,constraint,
+0,"t_basic, t_nofit",test:basic_straight_bottom,open,constraint,open,constraint,open,constraint,,,,,,,,,open,constraint,open,constraint,open,constraint,
+0,"t_basic, t_nofit",test:basic_tee_bottom,open,open,open,constraint,open,constraint,,,,,,,,,open,open,open,constraint,open,constraint,
+0,"t_basic, t_nofit",test:basic_cross_bottom,open,open,open,open,open,constraint,,,,,,,,,open,open,open,open,open,constraint,
+0,t_basic,test:basic_closed_top,constraint,constraint,constraint,constraint,constraint,open,,,,,,,,,constraint,constraint,constraint,constraint,constraint,open,
+0,t_basic,test:basic_deadend_top,open,constraint,constraint,constraint,constraint,open,,,,,,,,,open,constraint,constraint,constraint,constraint,open,
+0,t_basic,test:basic_corner_top,open,open,constraint,constraint,constraint,open,,,,,,,,,open,open,constraint,constraint,constraint,open,
+0,"t_basic, t_nofit",test:basic_straight_top,open,constraint,open,constraint,constraint,open,,,,,,,,,open,constraint,open,constraint,constraint,open,
+0,"t_basic, t_nofit",test:basic_tee_top,open,open,open,constraint,constraint,open,,,,,,,,,open,open,open,constraint,constraint,open,
+0,"t_basic, t_nofit",test:basic_cross_top,open,open,open,open,constraint,open,,,,,,,,,open,open,open,open,constraint,open,
+0,t_slots,test:slots_closed_bottom,constraint,constraint,constraint,constraint,hatch,constraint,,,,,,,,,"open, constraint, join","open, constraint, join","open, constraint, join","open, constraint, join","join, hatch, open","open, constraint, join",
+0,t_slots,test:slots_deadend_bottom,door,constraint,constraint,constraint,hatch,constraint,,,,,,,,,"join, open, door","open, constraint, join","open, constraint, join","open, constraint, join","join, hatch, open","open, constraint, join",
+0,t_slots,test:slots_corner_bottom,door,door,constraint,constraint,hatch,constraint,,,,,,,,,"join, open, door","join, open, door","open, constraint, join","open, constraint, join","join, hatch, open","open, constraint, join",
+0,t_slots,test:slots_straight_bottom,door,constraint,door,constraint,hatch,constraint,,,,,,,,,"join, open, door","open, constraint, join","join, open, door","open, constraint, join","join, hatch, open","open, constraint, join",
+0,t_slots,test:slots_tee_bottom,door,door,door,constraint,hatch,constraint,,,,,,,,,"join, open, door","join, open, door","join, open, door","open, constraint, join","join, hatch, open","open, constraint, join",
+0,t_slots,test:slots_cross_bottom,door,door,door,door,hatch,constraint,,,,,,,,,"join, open, door","join, open, door","join, open, door","join, open, door","join, hatch, open","open, constraint, join",
+0,t_slots,test:slots_closed_top,constraint,constraint,constraint,constraint,constraint,hatch,,,,,,,,,"open, constraint, join","open, constraint, join","open, constraint, join","open, constraint, join","open, constraint, join","join, hatch, open",
+0,t_slots,test:slots_deadend_top,door,constraint,constraint,constraint,constraint,hatch,,,,,,,,,"join, open, door","open, constraint, join","open, constraint, join","open, constraint, join","open, constraint, join","join, hatch, open",
+0,t_slots,test:slots_corner_top,door,door,constraint,constraint,constraint,hatch,,,,,,,,,"join, open, door","join, open, door","open, constraint, join","open, constraint, join","open, constraint, join","join, hatch, open",
+0,t_slots,test:slots_straight_top,door,constraint,door,constraint,constraint,hatch,,,,,,,,,"join, open, door","open, constraint, join","join, open, door","open, constraint, join","open, constraint, join","join, hatch, open",
+0,t_slots,test:slots_tee_top,door,door,door,constraint,constraint,hatch,,,,,,,,,"join, open, door","join, open, door","join, open, door","open, constraint, join","open, constraint, join","join, hatch, open",
+0,t_slots,test:slots_cross_top,door,door,door,door,constraint,hatch,,,,,,,,,"join, open, door","join, open, door","join, open, door","join, open, door","open, constraint, join","join, hatch, open",
+0,t_domino,test:domino_half,join,constraint,constraint,constraint,constraint,constraint,,,,,,,,,join,constraint,constraint,constraint,constraint,constraint,
+0,t_domino,test:domino_half_up,constraint,constraint,constraint,constraint,join,constraint,,,,,,,,,constraint,constraint,constraint,constraint,join,constraint,
+0,t_domino,test:domino_half_down,constraint,constraint,constraint,constraint,constraint,join,,,,,,,,,constraint,constraint,constraint,constraint,constraint,join,
+0,t_tri,test:tri_end_side,end_side,constraint,constraint,constraint,constraint,constraint,,,,,,,,,mid,constraint,constraint,constraint,constraint,constraint,
+0,t_tri,test:tri_end_up,constraint,constraint,constraint,constraint,end_up,constraint,,,,,,,,,constraint,constraint,constraint,constraint,mid,constraint,
+0,t_tri,test:tri_end_down,constraint,constraint,constraint,constraint,constraint,end_down,,,,,,,,,constraint,constraint,constraint,constraint,constraint,mid,
+0,t_tri,test:tri_mid_straight,mid,constraint,mid,constraint,constraint,constraint,,,,,,,,,"open, end_side, door",constraint,"open, end_side, door",constraint,constraint,constraint,
+0,t_tri,test:tri_mid_corner,mid,mid,constraint,constraint,constraint,constraint,,,,,,,,,"open, end_side, door","open, end_side, door",constraint,constraint,constraint,constraint,
+0,t_tri,test:tri_mid_side_up,mid,constraint,constraint,constraint,mid,constraint,,,,,,,,,"open, end_side, door",constraint,constraint,constraint,"open, hatch, end_down",constraint,
+0,t_tri,test:tri_mid_side_down,mid,constraint,constraint,constraint,constraint,mid,,,,,,,,,"open, end_side, door",constraint,constraint,constraint,constraint,"end_up, open, hatch",
+0,t_tri,test:tri_mid_up_down,constraint,constraint,constraint,constraint,mid,mid,,,,,,,,,constraint,constraint,constraint,constraint,"open, hatch, end_down","end_up, open, hatch",
