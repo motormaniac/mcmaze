@@ -30,8 +30,8 @@ func $remove_all_constraints() (
 
 -- Test cases from maze2/manual_test/TESTS.md: each one enables only its test's category
 func $enable_category ($category) (
-  scoreboard players set @e[$LOOKUP] enabled 0;
-  scoreboard players set @e[$LOOKUP,tag=cat_$category] enabled 1;
+  tag @e[$LOOKUP] remove enabled;
+  tag @e[$LOOKUP,tag=cat_$category] add enabled;
 )
 
 func $enable_test_cases() (

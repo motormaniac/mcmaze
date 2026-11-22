@@ -20,12 +20,18 @@ for $i in 1..$TARGET_AMOUNT (
 )
 -- book keeping
 edit = edit count of this cell. This prevents bfs from doubling back on itself
+neighbor = 0 / null if this cell is not a neighbor. 1, 2, 3, 4, 5, 6 to mark the direction.
 priority = controls what order a cell ignores its neighbors
 i = index in the queue
 ref = reference index to a command block array. Maps this armor stand to its command block
-enabled = whether this lookup is turned on or not
 rng = random number
 rngWeight = the weighting of a lookup entity (out of 100)
+
+Tags:
+select = this is the cell that is currently being processed
+target = this is a neighbor of the select cell. There are multiple targets within one loop.
+not_north, not_east, not_south, not_west, not_up, not_down = this lookup entity is not a match for the select cell on that side
+enabled = this lookup entity is enabled for selection. If it is not enabled, it will be ignored.
 
 ## Lookup categories:
 use tags on lookups to keep track of which category it is
@@ -75,6 +81,15 @@ table $opposite (
   down: up,
 )
 
+table $dir_to_scoreboard (
+  north: 1,
+  east: 2,
+  south: 3,
+  west: 4,
+  up: 5,
+  down: 6,
+)
+
 -- # Spawn start point
 --[
 give @p minecraft:bat_spawn_egg[item_name=start,entity_data={id:"minecraft:bat",CustomName:start}]
@@ -107,6 +122,7 @@ func $show_graph () (
 func $init () (
   -- reset queue: remove the last run's nodes, but keep the constraints and the start node
   kill @e[$GRAPH,tag=!constraint,tag=!start];
+  tag @e[$GRAPH,tag=select] remove select;
   scoreboard players set .queueSize var 0;
   scoreboard players set @e[$GRAPH] i -1;
   -- push starting node to queue
@@ -146,7 +162,48 @@ if there is a possible output:
   remove select from graph
 ]--
 
-$STOP_LOOP = {STOP LOOP};
+--[
+Psuedocode 3:
+if there's no graph tagged select:
+  pop queue and tag select
+
+  reset the neighbor scoreboard for all graphs
+  reset lookups (remove the not_$dir tags)
+
+  for each neighbor:
+    mark neighbor as target
+    if target exists:
+      set scoreboard neighbor to north: 1, east: 2, south: 3, west: 4, up: 5, down: 6
+      set priority:
+      only set the priority of non-constraints. This means that constraints are never ignored, because they are not marked in the priority list.
+      vary rng by 1..10
+      add the neighbor's encoding type to its property (since encodings are all unique, this will make the priority unique)
+      add edit count to priority (higher edit counts are ignored last)
+        edit counts are multiples of 1,000,000
+      
+      find all lookups that match this target on that side. Add the tag not_$dir.
+      
+    if target is empty:
+      create graph node in that direction
+  
+if the the only neighbors are constraints, then remove select from graph
+
+set the direction to test by finding the neighbor with priority == 0.
+  On the first iteration, this process will select no neighbors.
+remove the tag not_$dir from all lookups.
+
+requeue the neighbor whose priority == 0 to override it.
+
+remove the filter tag from all lookups.
+tag all lookups[tag=not_north, tag=not_east...tag=not_down] add filter
+
+if filter exists
+  pick random from filter results
+  transfer properties to selected graph
+  increment select's edit by 1,000,000
+]--
+
+$STOP_LOOP = setblock -78 3 3 air;
 
 func $bfs_iterate() (
   -- If the queue is empty, end the loop
@@ -166,51 +223,72 @@ func $bfs_iterate() (
   execute $IF run scoreboard players remove .queueSize var 1;
 
   #-- reset neighbors
-  -- reset priority of each neighbor
   execute $IF run scoreboard players reset @e[$GRAPH] priority;
-  -- reset tags of each neighbor
-  execute $IF run tag @e[$GRAPH,tag=neighbor] remove neighbor;
-  for $dir in (north, east, south, west, up, down) (
-    execute $IF run tag @e[$GRAPH,tag=${dir}Neighbor] remove ${dir}Neighbor;
-  )
+  execute $IF run scoreboard players reset @e[$GRAPH] neighbor;
   #-- reset lookup
   for $dir in (north, east, south, west, up, down) (
     execute $IF run tag @e[$LOOKUP,tag=not_$dir] remove not_$dir;
   )
 
-  -- set priority of each neighbor
+  --------------------------------------
+
   for $dir in (north, east, south, west, up, down) (
-    $prioritize_and_filter_side($dir);
+    #-- mark neighbor as target
+    execute $IF as @e[$GRAPH,tag=select] at @s positioned $offset[$dir] run tag @n[distance=..1,$GRAPH] add target;
+    execute $IF run scoreboard players set @e[$GRAPH,tag=target] neighbor $dir_to_scoreboard[$dir];
+    -- store .target, for filtering. -1 means null.
+    execute $IF run scoreboard players set .target var -1;
+    execute $IF run scoreboard players operation .target var = @n[$GRAPH,tag=target] $opposite[$dir];
+
+    #-- filter lookups on side $dir
+    execute $IF
+      unless score .target var matches -1
+      as @e[$LOOKUP]
+      for $k in 1..$TARGET_AMOUNT (
+        unless score @s target_$dir$k = .target var
+      )
+      run tag @s add not_$dir;
+
+    #-- prioritize $dir
+    -- only set priority if .target is not null.
+    -- ignoring constraint graphs means that those sides will never be ignored since they aren't in the priority list.
+    -- Constraint nodes will always be considered.
+    -- rng(1..10) + neighbor's encoding type + edit count
+    execute $IF unless score .target var matches -1 as @n[$GRAPH,tag=target,tag=!constraint] store result score @s priority run random value 1..10;
+    execute $IF unless score .target var matches -1 as @n[$GRAPH,tag=target,tag=!constraint] run scoreboard players operation @s priority += .target var;
+    execute $IF unless score .target var matches -1 as @n[$GRAPH,tag=target,tag=!constraint] run scoreboard players operation @s priority += @s edit;
+
+    #-- Create and push empty neighbor towards $dir
+    -- only create a new neighbor if there is no target in that direction
+    execute $IF unless entity @n[$GRAPH,tag=target] as @n[$GRAPH,tag=select] at @s run summon item_display $offset[$dir] {CustomName:graph,$ITEM_DISPLAY_NBT,Tags:[new]};
+    execute $IF as @e[$GRAPH,tag=new] unless score @s i matches 0.. run scoreboard players operation @s i = .queueSize var;
+    !conditional
+    scoreboard players add .queueSize var 1;
+
+    tag @e[$GRAPH,tag=target] remove target;
   )
+  
+  #-- Initialize new empty neighbors
+  execute $IF run scoreboard players set @e[$GRAPH,tag=new] edit 0;
+  -- set all sides to -1
+  for $dir in (north, east, south, west, up, down) (
+    execute $IF run scoreboard players set @e[$GRAPH,tag=new] $dir -1;
+  )
+  tag @e[$GRAPH,tag=new] remove new;
+
+  --------------------------------------
 
   -- filter happens before ignore side so that the first case is that all the sides are included.
   #-- Filter lookups
-  tag @e[$LOOKUP,tag=filter] remove filter;
-  tag @e[$LOOKUP,scores={enabled=1},
+  tag @e[$LOOKUP,tag=enabled,
     for $dir in (north, east, south, west, up, down) sep "," (
       tag=!not_$dir
     )
   ] add filter;
 
-  #-- Ignore one side
-  -- ignore the side that has priority=0
-  for $dir in (north, east, south, west, up, down) (
-    tag @e[$GRAPH,scores={priority=0},tag=${dir}Neighbor] remove ${dir}Neighbor;
-    !conditional
-    tag @e[$LOOKUP,tag=not_$dir] remove not_$dir;
-  )
-
-  -- reset the node that has priority=0
-  tag @e[$GRAPH,tag=neighbor,scores={priority=0}] remove neighbor;
-  scoreboard players reset @e[$GRAPH,scores={priority=0}] priority;
-  -- decrement each neighbor's priority so that one of them is 0 for the next iteration.
-  scoreboard players set .min var 2147483647;
-  execute as @e[$GRAPH,tag=neighbor] run scoreboard players operation .min var < @s priority;
-  scoreboard players operation @e[$GRAPH,tag=neighbor] priority -= .min var;
-
-  #-- if filter entities exist
+  #-- if select and filter entities exist
   scoreboard players set .if var 0;
-  execute if entity @e[$LOOKUP,tag=filter] run scoreboard players set .if var 1;
+  execute if entity @e[$GRAPH,tag=select] if entity @e[$LOOKUP,tag=filter] run scoreboard players set .if var 1;
 
   #-- Pick random from filter results
   --[
@@ -238,69 +316,40 @@ func $bfs_iterate() (
     )
   )
 
-  #-- Increment edit
   execute $IF run scoreboard players add @e[$GRAPH,tag=select] edit 1000000;
-  -- push empty and weaker neighbors
-  for $dir in (north, east, south, west, up, down) (
-    $push_neighbor($dir);
-  )
-  -- set all sides to -1
-  for $dir in (north, east, south, west, up, down) (
-    execute $IF run scoreboard players set @e[$GRAPH,tag=init] $dir -1;
-  )
-  tag @e[$GRAPH,tag=new] remove init;
-
-  -- cleanup
+  #-- cleanup
+  tag @e[$LOOKUP,tag=filter] remove filter;
   tag @e[$LOOKUP,tag=select] remove select;
   execute $IF run tag @e[$GRAPH,tag=select] remove select;
+  
+  --------------------------------------
 
-  -- TODO:
-  -- If there is no match, and you can't remove any more neighbors, then remove select
-  execute $ELSE unless entity @e[$GRAPH,tag=neighbor,tag=!constraint] run {FAIL}
-)
-
-func $prioritize_and_filter_side($dir) (
-  #-- prioritize and filter $dir
-  -- if no neighbor exists, it's ignored
-  execute $IF as @e[$GRAPH,tag=select] at @s positioned $offset[$dir] run tag @n[distance=..1,$GRAPH] add ${dir}Neighbor;
-  tag @e[$GRAPH,tag=${dir}Neighbor] add neighbor;
-  -- store .target, for filtering. -1 means null.
-  execute $IF run scoreboard players set .target var -1;
-  execute $IF run scoreboard players operation .target var = @n[$GRAPH,tag=${dir}Neighbor] $opposite[$dir];
-  -- set each Neighbor's priority
-  execute $IF as @n[$GRAPH,tag=${dir}Neighbor] store result score @s priority run random value 1..10;
-  execute $IF as @n[$GRAPH,tag=${dir}Neighbor] run scoreboard players operation @s priority += .target var;
-  execute $IF as @n[$GRAPH,tag=${dir}Neighbor] run scoreboard players operation @s priority += @s edit;
-  execute $IF run scoreboard players set @e[$GRAPH,tag=${dir}Neighbor,tag=constraint] priority 2147483647;
-
-  -- filter lookups
-  execute $IF
-    unless score .target var matches -1
-    as @e[$LOOKUP]
-    for $k in 1..$TARGET_AMOUNT (
-      unless score @s target_$dir$k = .target var
-    )
-    run tag @s add not_$dir;
-)
-
-func $push_neighbor($dir) (
-  #-- push empty neighbor $dir
-  execute $IF as @e[$GRAPH,tag=select] at @s positioned $offset[$dir] unless entity @e[distance=..1,$GRAPH] run summon item_display ~ ~ ~ {CustomName:graph,$ITEM_DISPLAY_NBT,Tags:[new]};
-  scoreboard players operation @e[$GRAPH,tag=new] i = .queueSize var;
-  !conditional
-  scoreboard players set @e[$GRAPH,tag=new,scores={}] edit 0;
-  !conditional
-  scoreboard players add .queueSize var 1;
-  tag @e[$GRAPH,tag=new] add init;
-
-  #-- push weaker neighbor $dir
-  execute $IF
-    as @e[$GRAPH,tag=select] at @s positioned $offset[$dir]
-    as @n[distance=..1,$GRAPH,tag=!constraint,tag=!new,scores={i=-1}]
-    if score @s edit < @n[$GRAPH,tag=select] edit
-    run scoreboard players operation @s i = .queueSize var;
-  !conditional
-  scoreboard players add .queueSize var 1;
-
-  tag @e[$GRAPH,tag=new] remove new;
+  
+  #-- Find the next neighbor to ignore
+  -- clear every node at 0: tied nodes were all ignored and pushed together last tick
+  scoreboard players reset @e[$GRAPH,scores={priority=0}] priority;
+  -- decrement each neighbor's priority so that one of them is 0
+  scoreboard players set .min var 2147483647;
+  execute as @e[$GRAPH,scores={priority=0..}] run scoreboard players operation .min var < @s priority;
+  scoreboard players operation @e[$GRAPH,scores={priority=0..}] priority -= .min var;
+  
+  #-- If there's still a select and the priority list is not empty
+  scoreboard players set .if var 0;
+  execute if entity @e[$GRAPH,tag=select] if entity @e[$GRAPH,scores={priority=0..}] run scoreboard players set .if var 1;
+  -- if the priority list is empty, then remove select from graph
+  #-- If a single cell gives up, stop the loop
+  execute $ELSE run $STOP_LOOP;
+  
+  #-- Ignore and push every side at priority 0
+  -- Neighbors that tie are ignored and pushed in the same tick. Each side has at most one neighbor,
+  -- so the conditional queueSize += 1 counts each push once.
+  for $dir in (north, east, south, west, up, down) (
+    -- push before the neighbor score is reset, since the push finds the node by it
+    execute $IF as @e[$GRAPH,scores={priority=0,neighbor=$dir_to_scoreboard[$dir]}] unless score @s i matches 0.. run scoreboard players operation @s i = .queueSize var;
+    !conditional
+    scoreboard players add .queueSize var 1;
+    execute $IF run scoreboard players reset @e[$GRAPH,scores={priority=0,neighbor=$dir_to_scoreboard[$dir]}] neighbor;
+    !conditional
+    tag @e[$LOOKUP,tag=not_$dir] remove not_$dir;
+  )
 )
